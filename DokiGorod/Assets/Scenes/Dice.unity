@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657815, g: 0.49641192, b: 0.5748165, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -164,9 +164,9 @@ Light:
   m_GameObject: {fileID: 124031933}
   m_Enabled: 1
   serializedVersion: 10
-  m_Type: 2
+  m_Type: 3
   m_Shape: 0
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 0.8997319, b: 0.740566, a: 1}
   m_Intensity: 1
   m_Range: 10
   m_SpotAngle: 30
@@ -206,7 +206,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 2
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -612,8 +612,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7488661e253999b4a82098491b2cebcc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  diceVelocity: {x: 0, y: 0, z: 0}
-  hasProcessedTrigger: 0
 --- !u!65 &376989499
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -970,8 +968,8 @@ Camera:
   m_GameObject: {fileID: 436418875}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_ClearFlags: 2
+  m_BackGroundColor: {r: 0.9450981, g: 0.8705883, b: 0.78823537, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
@@ -1290,7 +1288,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8b0e15381f3bca44a33e054471786dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  text: {fileID: 0}
 --- !u!114 &639300097
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2450,7 +2447,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2294666622067752000, guid: 78715206132fe45bda5814c40b9b063f, type: 3}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
