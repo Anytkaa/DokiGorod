@@ -14,4 +14,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/Vopros.unity
     guid: e1709e5c8c298ed48bce3473cf2d874b
+  - enabled: 1
+    path: Assets/Scenes/Menu.unity
+    guid: e07459ed38f454b81a5165d31b87b4af
   m_configObjects: {}
