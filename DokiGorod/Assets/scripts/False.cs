@@ -17,7 +17,6 @@ public class False : MonoBehaviour
         }
 
         SceneManager.LoadScene(sceneName);
-        snake.maxon = 2;
 
     }
     private void OnApplicationQuit()
