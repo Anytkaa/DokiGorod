@@ -7,52 +7,52 @@ using UnityEngine.SceneManagement;
 
 public class snake : MonoBehaviour
 {
-    // --- Существующие переменные, адаптированные или оставленные ---
-    public GameObject pas14; // Если все еще используется для чего-то конкретного
-    public GameObject pas20; // Если все еще используется для чего-то конкретного
-    public GameObject buttonRollDice; // Кнопка "Кинь кубик"
-    public static int money = 2000;  // Статическое поле для денег, будет сбрасываться при перезапуске игры
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
+    public GameObject pas14; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    public GameObject pas20; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ-пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    public GameObject buttonRollDice; // пїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ"
+    public static int money = 5000;  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
 
-    [Header("Настройки Движения")]
-    public float stepDistance = 10.0f; // Расстояние одного шага
-    public float moveDuration = 0.5f;  // Длительность анимации одного шага
-    public float rotateDuration = 0.3f; // Длительность анимации поворота
+    [Header("пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
+    public float stepDistance = 10.0f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+    public float moveDuration = 0.5f;  // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+    public float rotateDuration = 0.3f; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-    [Header("UI для Развилки")]
-    public GameObject turnChoiceUI;    // Панель с кнопками выбора (лево/право)
+    [Header("UI пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
+    public GameObject turnChoiceUI;    // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅ)
     public Button turnLeftButton;
     public Button turnRightButton;
 
-    [Header("UI Отображения")]
-    public Text movesValueText;        // UI Text для отображения количества оставшихся ходов
+    [Header("UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ")]
+    public Text movesValueText;        // UI Text пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
-    // --- Приватные переменные для управления состоянием ---
-    private bool isMoving = false;             // Флаг: персонаж в процессе пошагового движения
-    private bool waitingForTurnChoice = false; // Флаг: персонаж на развилке и ждет выбора игрока
-    private int stepsRemainingAfterTurn = 0;   // Сколько шагов останется после выбора на развилке
-    private Coroutine moveCoroutine;           // Ссылка на текущую корутину движения
-    private int currentDiceSteps = 0;          // Общее количество шагов, полученное от текущего броска кубика
+    // --- пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ---
+    private bool isMoving = false;             // пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    private bool waitingForTurnChoice = false; // пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+    private int stepsRemainingAfterTurn = 0;   // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    private Coroutine moveCoroutine;           // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+    private int currentDiceSteps = 0;          // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
-    // Ключи для PlayerPrefs (лучше вынести в статический класс или константы, если используются много где)
+    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ PlayerPrefs (пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ)
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
     private const string PosYKey = "PlayerPositionY_Snake_DokiGorod";
     private const string PosZKey = "PlayerPositionZ_Snake_DokiGorod";
     private const string RotYKey = "PlayerRotationY_Snake_DokiGorod";
-    private const string DiceRollKey = "LastDiceRoll"; // Убедитесь, что этот ключ совпадает с ключом в GameController
+    private const string DiceRollKey = "LastDiceRoll"; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ GameController
 
     void Start()
     {
-        gameObject.name = "Player_Snake"; // Хорошая практика для идентификации в логах/иерархии
+        gameObject.name = "Player_Snake"; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Debug.Log("Snake.cs Start() called on scene: " + SceneManager.GetActiveScene().name);
 
-        LoadPlayerState(); // Загрузка сохраненной позиции/поворота при старте
+        LoadPlayerState(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ/пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
-        // Проверяем, есть ли результат броска кубика из другой сцены или предыдущего состояния
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (PlayerPrefs.HasKey(DiceRollKey))
         {
             int stepsFromDice = PlayerPrefs.GetInt(DiceRollKey);
             Debug.Log("Snake: Found dice roll result in PlayerPrefs (" + DiceRollKey + "): " + stepsFromDice);
-            PlayerPrefs.DeleteKey(DiceRollKey); // Удаляем ключ, чтобы не использовать его повторно
+            PlayerPrefs.DeleteKey(DiceRollKey); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             PlayerPrefs.Save();
 
             if (stepsFromDice > 0)
@@ -63,45 +63,45 @@ public class snake : MonoBehaviour
             }
             else
             {
-                UpdateMovesValueUIText(0); // Отобразить 0, если шагов нет
+                UpdateMovesValueUIText(0); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
                 Debug.Log("Snake: Steps from dice is 0 or less, not moving from initial dice roll.");
-                UpdateButtonRollDiceVisibility(); // Показать кнопку броска, если не двигаемся
+                UpdateButtonRollDiceVisibility(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             }
         }
         else
         {
             Debug.Log("Snake: No dice roll result found in PlayerPrefs with key: " + DiceRollKey);
-            UpdateMovesValueUIText(0); // Если нет данных о броске, ходов 0
-            UpdateButtonRollDiceVisibility(); // Показать кнопку броска
+            UpdateMovesValueUIText(0); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ 0
+            UpdateButtonRollDiceVisibility(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         }
 
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // Скрываем UI выбора при старте
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
-        // Настройка слушателей кнопок выбора на развилке
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         if (turnLeftButton != null)
         {
             turnLeftButton.onClick.RemoveAllListeners();
-            turnLeftButton.onClick.AddListener(() => HandleTurnChoice(true)); // true для поворота налево
+            turnLeftButton.onClick.AddListener(() => HandleTurnChoice(true)); // true пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         }
         if (turnRightButton != null)
         {
             turnRightButton.onClick.RemoveAllListeners();
-            turnRightButton.onClick.AddListener(() => HandleTurnChoice(false)); // false для поворота направо
+            turnRightButton.onClick.AddListener(() => HandleTurnChoice(false)); // false пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
 
-        // Пример логики для pas14/pas20, если она нужна (убедитесь, что классы polpas14/polpas20 существуют)
+        // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ pas14/pas20, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ polpas14/polpas20 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         // if (polpas14.pas14 == true && pas14 != null) pas14.SetActive(true);
         // if (polpas20.pas20 == true && pas20 != null) pas20.SetActive(true);
     }
 
     void LoadPlayerState()
     {
-        if (PlayerPrefs.HasKey(PosXKey)) // Проверяем по одному ключу, предполагая, что если есть один, есть все
+        if (PlayerPrefs.HasKey(PosXKey)) // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
         {
             float x = PlayerPrefs.GetFloat(PosXKey);
             float y = PlayerPrefs.GetFloat(PosYKey);
             float z = PlayerPrefs.GetFloat(PosZKey);
-            float savedRotationY = PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y); // Используем текущий как дефолт
+            float savedRotationY = PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
             transform.position = new Vector3(x, y, z);
             transform.rotation = Quaternion.Euler(0, savedRotationY, 0);
@@ -110,7 +110,7 @@ public class snake : MonoBehaviour
         else
         {
             Debug.Log("Snake: No saved player state found. Starting at initial editor/scene position.");
-            // Персонаж начнет с позиции, установленной в редакторе для этого объекта
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
     }
 
@@ -120,7 +120,7 @@ public class snake : MonoBehaviour
         PlayerPrefs.SetFloat(PosYKey, transform.position.y);
         PlayerPrefs.SetFloat(PosZKey, transform.position.z);
         PlayerPrefs.SetFloat(RotYKey, transform.rotation.eulerAngles.y);
-        PlayerPrefs.Save(); // Важно сохранить изменения
+        PlayerPrefs.Save(); // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Debug.Log("Snake: Player state saved. Position: " + transform.position + ", RotationY: " + transform.rotation.eulerAngles.y);
     }
 
@@ -131,10 +131,10 @@ public class snake : MonoBehaviour
         PlayerPrefs.DeleteKey(PosYKey);
         PlayerPrefs.DeleteKey(PosZKey);
         PlayerPrefs.DeleteKey(RotYKey);
-        // Если есть другие PlayerPrefs, которые нужно сбрасывать при выходе (например, очки, специфичные для сессии предметы),
-        // удалите их здесь.
+        // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ PlayerPrefs, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ),
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
         // PlayerPrefs.DeleteKey("PlayerScore_DokiGorod");
-        PlayerPrefs.Save(); // Сохраняем удаления
+        PlayerPrefs.Save(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     }
 
     public void StartMoving(int steps)
@@ -145,21 +145,21 @@ public class snake : MonoBehaviour
             return;
         }
         currentDiceSteps = steps;
-        UpdateMovesValueUIText(currentDiceSteps); // Обновляем UI с общим количеством шагов
+        UpdateMovesValueUIText(currentDiceSteps); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         Debug.Log("Snake: StartMoving called for " + currentDiceSteps + " steps.");
-        UpdateButtonRollDiceVisibility(); // Скрыть кнопку броска кубика
+        UpdateButtonRollDiceVisibility(); // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
         if (moveCoroutine != null) StopCoroutine(moveCoroutine);
         moveCoroutine = StartCoroutine(MoveStepsCoroutine(currentDiceSteps));
     }
 
-    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially) // stepsToMoveInitially - это то, что выпало на кубике
+    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially) // stepsToMoveInitially - пїЅпїЅпїЅ пїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
     {
         isMoving = true;
         Debug.Log("Snake: MoveStepsCoroutine started. Initial steps for this sequence: " + stepsToMoveInitially + ". Current total dice steps remaining: " + currentDiceSteps);
 
-        // Мы будем уменьшать currentDiceSteps на каждом шаге. Цикл продолжается, пока currentDiceSteps > 0
-        // и мы не ждем выбора на развилке.
+        // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ currentDiceSteps пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ currentDiceSteps > 0
+        // пїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
         while (currentDiceSteps > 0 && !waitingForTurnChoice)
         {
             Vector3 startPosition = transform.position;
@@ -174,43 +174,43 @@ public class snake : MonoBehaviour
                 elapsedTime += Time.deltaTime;
                 yield return null;
             }
-            transform.position = endPosition; // Гарантируем точное конечное положение
+            transform.position = endPosition; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
-            currentDiceSteps--; // Уменьшаем общее количество оставшихся шагов от кубика
-            UpdateMovesValueUIText(currentDiceSteps); // Обновляем UI
+            currentDiceSteps--; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+            UpdateMovesValueUIText(currentDiceSteps); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI
 
             // Debug.Log("Snake: Step completed. Dice steps remaining: " + currentDiceSteps);
 
-            // Здесь можно добавить проверку на триггеры событий на клетке ПОСЛЕ шага,
-            // если это предпочтительнее OnTriggerEnter (например, для точного определения клетки).
+            // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ,
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ OnTriggerEnter (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ).
             // CheckForCellEvent();
 
-            // Небольшая пауза между шагами, если нужна для визуального восприятия
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             // yield return new WaitForSeconds(0.1f); 
         }
 
-        isMoving = false; // Завершили пошаговое движение (либо все шаги, либо развилка)
+        isMoving = false; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         Debug.Log("Snake: MoveStepsCoroutine finished. isMoving: " + isMoving + ", waitingForTurnChoice: " + waitingForTurnChoice + ", currentDiceSteps: " + currentDiceSteps);
 
-        if (!waitingForTurnChoice) // Если НЕ на развилке, значит, все шаги этой последовательности сделаны
+        if (!waitingForTurnChoice) // пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         {
             OnMovementFinished();
         }
-        // Если waitingForTurnChoice is true, то ReachedTurnPoint уже должен был взять управление
-        // и после выбора пользователя будет вызван HandleTurnChoice, который возобновит движение, если есть шаги.
+        // пїЅпїЅпїЅпїЅ waitingForTurnChoice is true, пїЅпїЅ ReachedTurnPoint пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        // пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ HandleTurnChoice, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
     }
 
     void OnMovementFinished()
     {
         Debug.Log("Snake: All movement from current dice roll sequence completed (or no steps left after turn).");
-        // currentDiceSteps должен быть 0, если не было развилок или если шаги закончились после развилки.
-        if (currentDiceSteps < 0) currentDiceSteps = 0; // На всякий случай
-        UpdateMovesValueUIText(currentDiceSteps); // Убедимся, что UI показывает 0
-        UpdateButtonRollDiceVisibility(); // Показать кнопку броска кубика
-        SavePlayerState(); // Сохраняем позицию игрока после завершения всех ходов
+        // currentDiceSteps пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ 0, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+        if (currentDiceSteps < 0) currentDiceSteps = 0; // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+        UpdateMovesValueUIText(currentDiceSteps); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ 0
+        UpdateButtonRollDiceVisibility(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+        SavePlayerState(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     }
 
-    public void ReachedTurnPoint() // Вызывается внешним триггером на клетке-развилке
+    public void ReachedTurnPoint() // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ-пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     {
         if (waitingForTurnChoice)
         {
@@ -218,28 +218,28 @@ public class snake : MonoBehaviour
             return;
         }
 
-        // Показываем UI выбора, только если персонаж был в движении ИЛИ у него есть шаги
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         if (isMoving || (currentDiceSteps > 0 && !waitingForTurnChoice))
         {
             Debug.Log("Snake: Reached Turn Point. CurrentDiceSteps: " + currentDiceSteps);
             waitingForTurnChoice = true;
-            isMoving = false; // Важно остановить флаг активного пошагового движения
+            isMoving = false; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
             if (moveCoroutine != null)
             {
                 StopCoroutine(moveCoroutine);
-                moveCoroutine = null; // Обнуляем ссылку на корутину
+                moveCoroutine = null; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 Debug.Log("Snake: MoveCoroutine stopped by ReachedTurnPoint.");
             }
 
-            stepsRemainingAfterTurn = currentDiceSteps; // Сохраняем ОСТАВШИЕСЯ шаги (которые включают текущий шаг, если он не был "сделан" до развилки)
+            stepsRemainingAfterTurn = currentDiceSteps; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
 
             if (turnChoiceUI != null)
             {
                 turnChoiceUI.SetActive(true);
                 Debug.Log("Snake: TurnChoiceUI activated.");
             }
-            UpdateButtonRollDiceVisibility(); // Кнопка "Кинь кубик" должна быть неактивна
+            UpdateButtonRollDiceVisibility(); // пїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
         else
         {
@@ -247,43 +247,43 @@ public class snake : MonoBehaviour
         }
     }
 
-    public void HandleTurnChoice(bool turnLeft) // true - налево, false - направо
+    public void HandleTurnChoice(bool turnLeft) // true - пїЅпїЅпїЅпїЅпїЅпїЅ, false - пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     {
         if (!waitingForTurnChoice)
         {
             Debug.LogWarning("Snake: HandleTurnChoice called, but not waiting for a choice.");
             return;
         }
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // Скрываем UI выбора
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅпїЅпїЅ
 
         Debug.Log("Snake: HandleTurnChoice. Turn Left: " + turnLeft + ". Steps to continue with: " + stepsRemainingAfterTurn);
 
         float rotationYAmount = turnLeft ? -90f : 90f;
         StartCoroutine(RotateCoroutine(rotationYAmount, () => {
-            waitingForTurnChoice = false; // Сбрасываем флаг ожидания ПОСЛЕ поворота
+            waitingForTurnChoice = false; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
             if (stepsRemainingAfterTurn > 0)
             {
-                // Важно: currentDiceSteps уже был уменьшен на 1 в MoveStepsCoroutine, если развилка была "на" клетке
-                // или остался неизменным, если развилка была "перед" клеткой.
-                // Мы используем stepsRemainingAfterTurn как источник шагов для продолжения.
+                // пїЅпїЅпїЅпїЅпїЅ: currentDiceSteps пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ 1 пїЅ MoveStepsCoroutine, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ "пїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ
+                // пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+                // пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ stepsRemainingAfterTurn пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
                 currentDiceSteps = stepsRemainingAfterTurn;
                 UpdateMovesValueUIText(currentDiceSteps);
                 Debug.Log("Snake: Continuing movement for " + currentDiceSteps + " steps after turn.");
-                StartMoving(currentDiceSteps); // Перезапускаем движение с оставшимися шагами
+                StartMoving(currentDiceSteps); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             }
             else
             {
                 Debug.Log("Snake: No steps remaining after turn choice.");
-                OnMovementFinished(); // Если шагов не осталось (например, 0), завершаем ход
+                OnMovementFinished(); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 0), пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ
             }
-            stepsRemainingAfterTurn = 0; // Сбрасываем после использования
+            stepsRemainingAfterTurn = 0; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }));
     }
 
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
     {
-        isMoving = true; // Блокируем другие действия на время поворота
+        isMoving = true; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         Quaternion startRotation = transform.rotation;
         Quaternion endRotation = startRotation * Quaternion.Euler(0, angleY, 0);
         float elapsedTime = 0;
@@ -294,23 +294,23 @@ public class snake : MonoBehaviour
             elapsedTime += Time.deltaTime;
             yield return null;
         }
-        transform.rotation = endRotation; // Гарантируем точный конечный поворот
-        isMoving = false; // Разблокируем после поворота (но StartMoving снова поставит isMoving=true если есть шаги)
-        onRotationComplete?.Invoke(); // Вызываем коллбэк после завершения поворота
+        transform.rotation = endRotation; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        isMoving = false; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅ StartMoving пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ isMoving=true пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ)
+        onRotationComplete?.Invoke(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     }
 
     void UpdateButtonRollDiceVisibility()
     {
         if (buttonRollDice != null)
         {
-            // Кнопка активна, если мы не двигаемся, не ждем выбора И все шаги от кубика сделаны
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             bool canRoll = !isMoving && !waitingForTurnChoice && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
             // Debug.Log("Snake: ButtonRollDice visibility updated to: " + canRoll + " (isMoving: " + isMoving + ", waitingForTurnChoice: " + waitingForTurnChoice + ", currentDiceSteps: " + currentDiceSteps + ")");
         }
     }
 
-    public bool IsMoving() // Для GameController, чтобы знать, можно ли бросать кубик
+    public bool IsMoving() // пїЅпїЅпїЅ GameController, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
     {
         return isMoving || waitingForTurnChoice;
     }
@@ -325,42 +325,42 @@ public class snake : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // Важно: Логика OnTriggerEnter может быть сложной в пошаговой игре,
-        // так как триггер может сработать между шагами или при неточном позиционировании.
-        // Рассмотрите возможность проверки событий на клетке в конце каждого шага в MoveStepsCoroutine.
+        // пїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ OnTriggerEnter пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ,
+        // пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅ MoveStepsCoroutine.
 
-        // Предотвращаем срабатывание триггеров, если мы уже обрабатываем движение или выбор
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         if (isMoving || waitingForTurnChoice)
         {
-            // Можно залогировать, если нужно отследить, какие триггеры игнорируются
+            // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             // Debug.Log("Snake: OnTriggerEnter for " + other.name + " ignored while moving or waiting for turn choice.");
             return;
         }
 
         Debug.Log("Snake: OnTriggerEnter with " + other.name);
 
-        if (other.CompareTag("TurnPointTrigger")) // Пример тега для триггера развилки
+        if (other.CompareTag("TurnPointTrigger")) // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         {
-            // Если триггер развилки не имеет своего скрипта, а просто запускает логику здесь
+            // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             Debug.Log("Snake: Hit a TurnPointTrigger directly.");
             ReachedTurnPoint();
         }
-        // Если у вас есть скрипт на самом триггере развилки, который вызывает ReachedTurnPoint(),
-        // то этот блок CompareTag может быть не нужен.
+        // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ReachedTurnPoint(),
+        // пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ CompareTag пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.
 
-        else if (other.TryGetComponent(out Eat eatScript)) // Пример для клетки "Еда"
+        else if (other.TryGetComponent(out Eat eatScript)) // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅ"
         {
             Debug.Log("Snake: Entered Eat trigger.");
-            // Логика для Eat
+            // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ Eat
             // eatScript.Consume();
             // Destroy(other.gameObject);
         }
-        else if (other.TryGetComponent(out Vopros voprosScript)) // Пример для клетки "Вопрос"
+        else if (other.TryGetComponent(out Vopros voprosScript)) // пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅ"
         {
             Debug.Log("Snake: Entered Vopros trigger. Saving state and loading Vopros scene.");
-            SavePlayerState(); // Сохраняем состояние перед сменой сцены
-            SceneManager.LoadScene("Vopros"); // Убедитесь, что сцена "Vopros" добавлена в Build Settings
+            SavePlayerState(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+            SceneManager.LoadScene("Vopros"); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ "Vopros" пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ Build Settings
         }
-        // Добавьте другие else if для других типов триггеров
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ else if пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
     }
 }
