@@ -1,4 +1,3 @@
-// snake.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -7,52 +6,51 @@ using UnityEngine.SceneManagement;
 
 public class snake : MonoBehaviour
 {
-    // --- ������������ ����������, �������������� ��� ����������� ---
-    public GameObject pas14; // ���� ��� ��� ������������ ��� ����-�� �����������
-    public GameObject pas20; // ���� ��� ��� ������������ ��� ����-�� �����������
-    public GameObject buttonRollDice; // ������ "���� �����"
-    public static int money = 5000;  // ����������� ���� ��� �����, ����� ������������ ��� ����������� ����
+    // Публичные переменные
+    public GameObject pas14;
+    public GameObject pas20;
+    public GameObject buttonRollDice;
+    public static int money = 5000;
 
-    [Header("��������� ��������")]
-    public float stepDistance = 10.0f; // ���������� ������ ����
-    public float moveDuration = 0.5f;  // ������������ �������� ������ ����
-    public float rotateDuration = 0.3f; // ������������ �������� ��������
+    [Header("Настройки движения")]
+    public float stepDistance = 10.0f;
+    public float moveDuration = 0.5f;
+    public float rotateDuration = 0.3f;
 
-    [Header("UI ��� ��������")]
-    public GameObject turnChoiceUI;    // ������ � �������� ������ (����/�����)
+    [Header("UI для поворотов")]
+    public GameObject turnChoiceUI;
     public Button turnLeftButton;
     public Button turnRightButton;
 
-    [Header("UI �����������")]
-    public Text movesValueText;        // UI Text ��� ����������� ���������� ���������� �����
+    [Header("UI отображения")]
+    public Text movesValueText;
 
-    // --- ��������� ���������� ��� ���������� ���������� ---
-    private bool isMoving = false;             // ����: �������� � �������� ���������� ��������
-    private bool waitingForTurnChoice = false; // ����: �������� �� �������� � ���� ������ ������
-    private int stepsRemainingAfterTurn = 0;   // ������� ����� ��������� ����� ������ �� ��������
-    private Coroutine moveCoroutine;           // ������ �� ������� �������� ��������
-    private int currentDiceSteps = 0;          // ����� ���������� �����, ���������� �� �������� ������ ������
+    // Приватные переменные
+    private bool isMoving = false;
+    private bool waitingForTurnChoice = false;
+    private int stepsRemainingAfterTurn = 0;
+    private Coroutine moveCoroutine;
+    private int currentDiceSteps = 0;
 
-    // ����� ��� PlayerPrefs (����� ������� � ����������� ����� ��� ���������, ���� ������������ ����� ���)
+    // Ключи для PlayerPrefs
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
     private const string PosYKey = "PlayerPositionY_Snake_DokiGorod";
     private const string PosZKey = "PlayerPositionZ_Snake_DokiGorod";
     private const string RotYKey = "PlayerRotationY_Snake_DokiGorod";
-    private const string DiceRollKey = "LastDiceRoll"; // ���������, ��� ���� ���� ��������� � ������ � GameController
+    private const string DiceRollKey = "LastDiceRoll";
 
     void Start()
     {
-        gameObject.name = "Player_Snake"; // ������� �������� ��� ������������� � �����/��������
+        gameObject.name = "Player_Snake";
         Debug.Log("Snake.cs Start() called on scene: " + SceneManager.GetActiveScene().name);
 
-        LoadPlayerState(); // �������� ����������� �������/�������� ��� ������
+        LoadPlayerState();
 
-        // ���������, ���� �� ��������� ������ ������ �� ������ ����� ��� ����������� ���������
         if (PlayerPrefs.HasKey(DiceRollKey))
         {
             int stepsFromDice = PlayerPrefs.GetInt(DiceRollKey);
             Debug.Log("Snake: Found dice roll result in PlayerPrefs (" + DiceRollKey + "): " + stepsFromDice);
-            PlayerPrefs.DeleteKey(DiceRollKey); // ������� ����, ����� �� ������������ ��� ��������
+            PlayerPrefs.DeleteKey(DiceRollKey);
             PlayerPrefs.Save();
 
             if (stepsFromDice > 0)
@@ -63,45 +61,40 @@ public class snake : MonoBehaviour
             }
             else
             {
-                UpdateMovesValueUIText(0); // ���������� 0, ���� ����� ���
+                UpdateMovesValueUIText(0);
                 Debug.Log("Snake: Steps from dice is 0 or less, not moving from initial dice roll.");
-                UpdateButtonRollDiceVisibility(); // �������� ������ ������, ���� �� ���������
+                UpdateButtonRollDiceVisibility();
             }
         }
         else
         {
             Debug.Log("Snake: No dice roll result found in PlayerPrefs with key: " + DiceRollKey);
-            UpdateMovesValueUIText(0); // ���� ��� ������ � ������, ����� 0
-            UpdateButtonRollDiceVisibility(); // �������� ������ ������
+            UpdateMovesValueUIText(0);
+            UpdateButtonRollDiceVisibility();
         }
 
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // �������� UI ������ ��� ������
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
 
-        // ��������� ���������� ������ ������ �� ��������
         if (turnLeftButton != null)
         {
             turnLeftButton.onClick.RemoveAllListeners();
-            turnLeftButton.onClick.AddListener(() => HandleTurnChoice(true)); // true ��� �������� ������
+            turnLeftButton.onClick.AddListener(() => HandleTurnChoice(true));
         }
         if (turnRightButton != null)
         {
             turnRightButton.onClick.RemoveAllListeners();
-            turnRightButton.onClick.AddListener(() => HandleTurnChoice(false)); // false ��� �������� �������
+            turnRightButton.onClick.AddListener(() => HandleTurnChoice(false));
         }
-
-        // ������ ������ ��� pas14/pas20, ���� ��� ����� (���������, ��� ������ polpas14/polpas20 ����������)
-        // if (polpas14.pas14 == true && pas14 != null) pas14.SetActive(true);
-        // if (polpas20.pas20 == true && pas20 != null) pas20.SetActive(true);
     }
 
     void LoadPlayerState()
     {
-        if (PlayerPrefs.HasKey(PosXKey)) // ��������� �� ������ �����, �����������, ��� ���� ���� ����, ���� ���
+        if (PlayerPrefs.HasKey(PosXKey))
         {
             float x = PlayerPrefs.GetFloat(PosXKey);
             float y = PlayerPrefs.GetFloat(PosYKey);
             float z = PlayerPrefs.GetFloat(PosZKey);
-            float savedRotationY = PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y); // ���������� ������� ��� ������
+            float savedRotationY = PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y);
 
             transform.position = new Vector3(x, y, z);
             transform.rotation = Quaternion.Euler(0, savedRotationY, 0);
@@ -110,7 +103,6 @@ public class snake : MonoBehaviour
         else
         {
             Debug.Log("Snake: No saved player state found. Starting at initial editor/scene position.");
-            // �������� ������ � �������, ������������� � ��������� ��� ����� �������
         }
     }
 
@@ -120,7 +112,7 @@ public class snake : MonoBehaviour
         PlayerPrefs.SetFloat(PosYKey, transform.position.y);
         PlayerPrefs.SetFloat(PosZKey, transform.position.z);
         PlayerPrefs.SetFloat(RotYKey, transform.rotation.eulerAngles.y);
-        PlayerPrefs.Save(); // ����� ��������� ���������
+        PlayerPrefs.Save();
         Debug.Log("Snake: Player state saved. Position: " + transform.position + ", RotationY: " + transform.rotation.eulerAngles.y);
     }
 
@@ -131,10 +123,7 @@ public class snake : MonoBehaviour
         PlayerPrefs.DeleteKey(PosYKey);
         PlayerPrefs.DeleteKey(PosZKey);
         PlayerPrefs.DeleteKey(RotYKey);
-        // ���� ���� ������ PlayerPrefs, ������� ����� ���������� ��� ������ (��������, ����, ����������� ��� ������ ��������),
-        // ������� �� �����.
-        // PlayerPrefs.DeleteKey("PlayerScore_DokiGorod");
-        PlayerPrefs.Save(); // ��������� ��������
+        PlayerPrefs.Save();
     }
 
     public void StartMoving(int steps)
@@ -145,28 +134,26 @@ public class snake : MonoBehaviour
             return;
         }
         currentDiceSteps = steps;
-        UpdateMovesValueUIText(currentDiceSteps); // ��������� UI � ����� ����������� �����
+        UpdateMovesValueUIText(currentDiceSteps);
         Debug.Log("Snake: StartMoving called for " + currentDiceSteps + " steps.");
-        UpdateButtonRollDiceVisibility(); // ������ ������ ������ ������
+        UpdateButtonRollDiceVisibility();
 
         if (moveCoroutine != null) StopCoroutine(moveCoroutine);
         moveCoroutine = StartCoroutine(MoveStepsCoroutine(currentDiceSteps));
     }
 
-    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially) // stepsToMoveInitially - ��� ��, ��� ������ �� ������
+    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially)
     {
         isMoving = true;
-        Debug.Log("Snake: MoveStepsCoroutine started. Initial steps for this sequence: " + stepsToMoveInitially + ". Current total dice steps remaining: " + currentDiceSteps);
+        Debug.Log("Snake: MoveStepsCoroutine started. Initial steps: " + stepsToMoveInitially + ". Current steps: " + currentDiceSteps);
 
-        // �� ����� ��������� currentDiceSteps �� ������ ����. ���� ������������, ���� currentDiceSteps > 0
-        // � �� �� ���� ������ �� ��������.
         while (currentDiceSteps > 0 && !waitingForTurnChoice)
         {
             Vector3 startPosition = transform.position;
             Vector3 endPosition = startPosition + transform.forward * stepDistance;
             float elapsedTime = 0;
 
-            Debug.Log("Snake: Moving one step from " + startPosition + " to " + endPosition + ". Dice steps remaining: " + (currentDiceSteps - 1));
+            Debug.Log("Snake: Moving one step from " + startPosition + " to " + endPosition + ". Steps remaining: " + (currentDiceSteps - 1));
 
             while (elapsedTime < moveDuration)
             {
@@ -174,43 +161,31 @@ public class snake : MonoBehaviour
                 elapsedTime += Time.deltaTime;
                 yield return null;
             }
-            transform.position = endPosition; // ����������� ������ �������� ���������
+            transform.position = endPosition;
 
-            currentDiceSteps--; // ��������� ����� ���������� ���������� ����� �� ������
-            UpdateMovesValueUIText(currentDiceSteps); // ��������� UI
-
-            // Debug.Log("Snake: Step completed. Dice steps remaining: " + currentDiceSteps);
-
-            // ����� ����� �������� �������� �� �������� ������� �� ������ ����� ����,
-            // ���� ��� ���������������� OnTriggerEnter (��������, ��� ������� ����������� ������).
-            // CheckForCellEvent();
-
-            // ��������� ����� ����� ������, ���� ����� ��� ����������� ����������
-            // yield return new WaitForSeconds(0.1f); 
+            currentDiceSteps--;
+            UpdateMovesValueUIText(currentDiceSteps);
         }
 
-        isMoving = false; // ��������� ��������� �������� (���� ��� ����, ���� ��������)
+        isMoving = false;
         Debug.Log("Snake: MoveStepsCoroutine finished. isMoving: " + isMoving + ", waitingForTurnChoice: " + waitingForTurnChoice + ", currentDiceSteps: " + currentDiceSteps);
 
-        if (!waitingForTurnChoice) // ���� �� �� ��������, ������, ��� ���� ���� ������������������ �������
+        if (!waitingForTurnChoice)
         {
             OnMovementFinished();
         }
-        // ���� waitingForTurnChoice is true, �� ReachedTurnPoint ��� ������ ��� ����� ����������
-        // � ����� ������ ������������ ����� ������ HandleTurnChoice, ������� ���������� ��������, ���� ���� ����.
     }
 
     void OnMovementFinished()
     {
-        Debug.Log("Snake: All movement from current dice roll sequence completed (or no steps left after turn).");
-        // currentDiceSteps ������ ���� 0, ���� �� ���� �������� ��� ���� ���� ����������� ����� ��������.
-        if (currentDiceSteps < 0) currentDiceSteps = 0; // �� ������ ������
-        UpdateMovesValueUIText(currentDiceSteps); // ��������, ��� UI ���������� 0
-        UpdateButtonRollDiceVisibility(); // �������� ������ ������ ������
-        SavePlayerState(); // ��������� ������� ������ ����� ���������� ���� �����
+        Debug.Log("Snake: All movement completed.");
+        if (currentDiceSteps < 0) currentDiceSteps = 0;
+        UpdateMovesValueUIText(currentDiceSteps);
+        UpdateButtonRollDiceVisibility();
+        SavePlayerState();
     }
 
-    public void ReachedTurnPoint() // ���������� ������� ��������� �� ������-��������
+    public void ReachedTurnPoint()
     {
         if (waitingForTurnChoice)
         {
@@ -218,72 +193,68 @@ public class snake : MonoBehaviour
             return;
         }
 
-        // ���������� UI ������, ������ ���� �������� ��� � �������� ��� � ���� ���� ����
         if (isMoving || (currentDiceSteps > 0 && !waitingForTurnChoice))
         {
             Debug.Log("Snake: Reached Turn Point. CurrentDiceSteps: " + currentDiceSteps);
             waitingForTurnChoice = true;
-            isMoving = false; // ����� ���������� ���� ��������� ���������� ��������
+            isMoving = false;
 
             if (moveCoroutine != null)
             {
                 StopCoroutine(moveCoroutine);
-                moveCoroutine = null; // �������� ������ �� ��������
+                moveCoroutine = null;
                 Debug.Log("Snake: MoveCoroutine stopped by ReachedTurnPoint.");
             }
 
-            stepsRemainingAfterTurn = currentDiceSteps; // ��������� ���������� ���� (������� �������� ������� ���, ���� �� �� ��� "������" �� ��������)
+            stepsRemainingAfterTurn = currentDiceSteps;
 
             if (turnChoiceUI != null)
             {
                 turnChoiceUI.SetActive(true);
                 Debug.Log("Snake: TurnChoiceUI activated.");
             }
-            UpdateButtonRollDiceVisibility(); // ������ "���� �����" ������ ���� ���������
+            UpdateButtonRollDiceVisibility();
         }
         else
         {
-            Debug.LogWarning("Snake: Reached Turn Point but not in a state to show turn UI (isMoving=" + isMoving + ", waitingForTurnChoice=" + waitingForTurnChoice + ", currentDiceSteps=" + currentDiceSteps + ").");
+            Debug.LogWarning("Snake: Reached Turn Point but not in a state to show turn UI.");
         }
     }
 
-    public void HandleTurnChoice(bool turnLeft) // true - ������, false - �������
+    public void HandleTurnChoice(bool turnLeft)
     {
         if (!waitingForTurnChoice)
         {
             Debug.LogWarning("Snake: HandleTurnChoice called, but not waiting for a choice.");
             return;
         }
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(false); // �������� UI ������
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
 
-        Debug.Log("Snake: HandleTurnChoice. Turn Left: " + turnLeft + ". Steps to continue with: " + stepsRemainingAfterTurn);
+        Debug.Log("Snake: HandleTurnChoice. Turn Left: " + turnLeft + ". Steps to continue: " + stepsRemainingAfterTurn);
 
         float rotationYAmount = turnLeft ? -90f : 90f;
         StartCoroutine(RotateCoroutine(rotationYAmount, () => {
-            waitingForTurnChoice = false; // ���������� ���� �������� ����� ��������
+            waitingForTurnChoice = false;
 
             if (stepsRemainingAfterTurn > 0)
             {
-                // �����: currentDiceSteps ��� ��� �������� �� 1 � MoveStepsCoroutine, ���� �������� ���� "��" ������
-                // ��� ������� ����������, ���� �������� ���� "�����" �������.
-                // �� ���������� stepsRemainingAfterTurn ��� �������� ����� ��� �����������.
                 currentDiceSteps = stepsRemainingAfterTurn;
                 UpdateMovesValueUIText(currentDiceSteps);
                 Debug.Log("Snake: Continuing movement for " + currentDiceSteps + " steps after turn.");
-                StartMoving(currentDiceSteps); // ������������� �������� � ����������� ������
+                StartMoving(currentDiceSteps);
             }
             else
             {
                 Debug.Log("Snake: No steps remaining after turn choice.");
-                OnMovementFinished(); // ���� ����� �� �������� (��������, 0), ��������� ���
+                OnMovementFinished();
             }
-            stepsRemainingAfterTurn = 0; // ���������� ����� �������������
+            stepsRemainingAfterTurn = 0;
         }));
     }
 
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
     {
-        isMoving = true; // ��������� ������ �������� �� ����� ��������
+        isMoving = true;
         Quaternion startRotation = transform.rotation;
         Quaternion endRotation = startRotation * Quaternion.Euler(0, angleY, 0);
         float elapsedTime = 0;
@@ -294,23 +265,21 @@ public class snake : MonoBehaviour
             elapsedTime += Time.deltaTime;
             yield return null;
         }
-        transform.rotation = endRotation; // ����������� ������ �������� �������
-        isMoving = false; // ������������ ����� �������� (�� StartMoving ����� �������� isMoving=true ���� ���� ����)
-        onRotationComplete?.Invoke(); // �������� ������� ����� ���������� ��������
+        transform.rotation = endRotation;
+        isMoving = false;
+        onRotationComplete?.Invoke();
     }
 
     void UpdateButtonRollDiceVisibility()
     {
         if (buttonRollDice != null)
         {
-            // ������ �������, ���� �� �� ���������, �� ���� ������ � ��� ���� �� ������ �������
             bool canRoll = !isMoving && !waitingForTurnChoice && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
-            // Debug.Log("Snake: ButtonRollDice visibility updated to: " + canRoll + " (isMoving: " + isMoving + ", waitingForTurnChoice: " + waitingForTurnChoice + ", currentDiceSteps: " + currentDiceSteps + ")");
         }
     }
 
-    public bool IsMoving() // ��� GameController, ����� �����, ����� �� ������� �����
+    public bool IsMoving()
     {
         return isMoving || waitingForTurnChoice;
     }
@@ -325,42 +294,27 @@ public class snake : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // �����: ������ OnTriggerEnter ����� ���� ������� � ��������� ����,
-        // ��� ��� ������� ����� ��������� ����� ������ ��� ��� �������� ����������������.
-        // ����������� ����������� �������� ������� �� ������ � ����� ������� ���� � MoveStepsCoroutine.
-
-        // ������������� ������������ ���������, ���� �� ��� ������������ �������� ��� �����
         if (isMoving || waitingForTurnChoice)
         {
-            // ����� ������������, ���� ����� ���������, ����� �������� ������������
-            // Debug.Log("Snake: OnTriggerEnter for " + other.name + " ignored while moving or waiting for turn choice.");
             return;
         }
 
         Debug.Log("Snake: OnTriggerEnter with " + other.name);
 
-        if (other.CompareTag("TurnPointTrigger")) // ������ ���� ��� �������� ��������
+        if (other.CompareTag("TurnPointTrigger"))
         {
-            // ���� ������� �������� �� ����� ������ �������, � ������ ��������� ������ �����
             Debug.Log("Snake: Hit a TurnPointTrigger directly.");
             ReachedTurnPoint();
         }
-        // ���� � ��� ���� ������ �� ����� �������� ��������, ������� �������� ReachedTurnPoint(),
-        // �� ���� ���� CompareTag ����� ���� �� �����.
-
-        else if (other.TryGetComponent(out Eat eatScript)) // ������ ��� ������ "���"
+        else if (other.TryGetComponent(out Eat eatScript))
         {
             Debug.Log("Snake: Entered Eat trigger.");
-            // ������ ��� Eat
-            // eatScript.Consume();
-            // Destroy(other.gameObject);
         }
-        else if (other.TryGetComponent(out Vopros voprosScript)) // ������ ��� ������ "������"
+        else if (other.TryGetComponent(out Vopros voprosScript))
         {
             Debug.Log("Snake: Entered Vopros trigger. Saving state and loading Vopros scene.");
-            SavePlayerState(); // ��������� ��������� ����� ������ �����
-            SceneManager.LoadScene("Vopros"); // ���������, ��� ����� "Vopros" ��������� � Build Settings
+            SavePlayerState();
+            SceneManager.LoadScene("Vopros");
         }
-        // �������� ������ else if ��� ������ ����� ���������
     }
 }
