@@ -1,3 +1,4 @@
+// snake.cs
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -6,31 +7,41 @@ using UnityEngine.SceneManagement;
 
 public class snake : MonoBehaviour
 {
-    // Публичные переменные
-    public GameObject pas14;
-    public GameObject pas20;
-    public GameObject buttonRollDice;
-    public static int money = 5000;
+    // --- Публичные переменные для настройки в Инспекторе ---
+    [Header("Объекты и UI")]
+    public GameObject buttonRollDice;    // Кнопка "Кинь кубик"
+    public Text movesValueText;          // UI Text для отображения количества оставшихся ходов
+    // public GameObject pas14; // Если используется
+    // public GameObject pas20; // Если используется
 
-    [Header("Настройки движения")]
-    public float stepDistance = 10.0f;
-    public float moveDuration = 0.5f;
-    public float rotateDuration = 0.3f;
+    [Header("Настройки Движения")]
+    public float stepDistance = 10.0f;   // Расстояние одного шага по основной дороге
+    public float moveDuration = 0.5f;    // Длительность анимации одного шага
+    public float rotateDuration = 0.3f;  // Длительность анимации поворота
+    public float loopMoveDurationPerWaypoint = 0.9f; // Длительность движения к одной точке петли
+    public float loopRotateSpeed = 5f;   // Скорость плавного поворота на петле
 
-    [Header("UI для поворотов")]
-    public GameObject turnChoiceUI;
+    [Header("UI для Развилки")]
+    public GameObject turnChoiceUI;      // Панель с кнопками выбора (лево/право)
     public Button turnLeftButton;
     public Button turnRightButton;
 
-    [Header("UI отображения")]
-    public Text movesValueText;
+    [Header("Настройки Боковых Путей (Петель)")]
+    public Transform[] leftLoopWaypoints;  // Массив Transform'ов точек для левой петли
+    public int leftLoopCost = 3;         // Сколько шагов стоит левая петля (если фиксировано, иначе можно считать по waypoints.Length)
+    public Transform[] rightLoopWaypoints; // Массив Transform'ов точек для правой петли
+    public int rightLoopCost = 3;        // Сколько шагов стоит правая петля
 
-    // Приватные переменные
-    private bool isMoving = false;
-    private bool waitingForTurnChoice = false;
-    private int stepsRemainingAfterTurn = 0;
-    private Coroutine moveCoroutine;
-    private int currentDiceSteps = 0;
+    // --- Статические и приватные переменные ---
+    public static int money = 2000;        // Статическое поле для денег
+
+    private bool isMoving = false;             // Флаг: персонаж в процессе активного движения (основной путь или поворот)
+    private bool waitingForTurnChoice = false; // Флаг: персонаж на развилке и ждет выбора игрока
+    private bool isMovingOnLoop = false;       // Флаг: персонаж движется по боковой петле
+    private int stepsRemainingAfterTurn = 0;   // Сколько шагов было доступно на момент выбора на развилке
+    private Coroutine primaryMoveCoroutine;    // Ссылка на корутину движения по основному пути/поворота
+    private Coroutine loopMoveCoroutine;       // Ссылка на корутину движения по петле
+    private int currentDiceSteps = 0;          // Общее количество шагов, полученное от текущего броска кубика
 
     // Ключи для PlayerPrefs
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
@@ -39,6 +50,7 @@ public class snake : MonoBehaviour
     private const string RotYKey = "PlayerRotationY_Snake_DokiGorod";
     private const string DiceRollKey = "LastDiceRoll";
 
+    // --- Методы Жизненного Цикла Unity ---
     void Start()
     {
         gameObject.name = "Player_Snake";
@@ -55,20 +67,16 @@ public class snake : MonoBehaviour
 
             if (stepsFromDice > 0)
             {
-                UpdateMovesValueUIText(stepsFromDice);
-                Debug.Log("Snake: Calling StartMoving with " + stepsFromDice + " steps from Start().");
                 StartMoving(stepsFromDice);
             }
             else
             {
                 UpdateMovesValueUIText(0);
-                Debug.Log("Snake: Steps from dice is 0 or less, not moving from initial dice roll.");
                 UpdateButtonRollDiceVisibility();
             }
         }
         else
         {
-            Debug.Log("Snake: No dice roll result found in PlayerPrefs with key: " + DiceRollKey);
             UpdateMovesValueUIText(0);
             UpdateButtonRollDiceVisibility();
         }
@@ -87,6 +95,17 @@ public class snake : MonoBehaviour
         }
     }
 
+    void OnApplicationQuit()
+    {
+        Debug.Log("Snake: Application quitting. Clearing saved player state for next session.");
+        PlayerPrefs.DeleteKey(PosXKey);
+        PlayerPrefs.DeleteKey(PosYKey);
+        PlayerPrefs.DeleteKey(PosZKey);
+        PlayerPrefs.DeleteKey(RotYKey);
+        PlayerPrefs.Save();
+    }
+
+    // --- Управление Состоянием Игрока (Сохранение/Загрузка) ---
     void LoadPlayerState()
     {
         if (PlayerPrefs.HasKey(PosXKey))
@@ -95,10 +114,9 @@ public class snake : MonoBehaviour
             float y = PlayerPrefs.GetFloat(PosYKey);
             float z = PlayerPrefs.GetFloat(PosZKey);
             float savedRotationY = PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y);
-
             transform.position = new Vector3(x, y, z);
             transform.rotation = Quaternion.Euler(0, savedRotationY, 0);
-            Debug.Log("Snake: Player state loaded. Position: " + transform.position + ", RotationY: " + savedRotationY);
+            Debug.Log("Snake: Player state loaded. Pos: " + transform.position + ", RotY: " + savedRotationY);
         }
         else
         {
@@ -113,47 +131,41 @@ public class snake : MonoBehaviour
         PlayerPrefs.SetFloat(PosZKey, transform.position.z);
         PlayerPrefs.SetFloat(RotYKey, transform.rotation.eulerAngles.y);
         PlayerPrefs.Save();
-        Debug.Log("Snake: Player state saved. Position: " + transform.position + ", RotationY: " + transform.rotation.eulerAngles.y);
+        Debug.Log("Snake: Player state saved. Pos: " + transform.position + ", RotY: " + transform.rotation.eulerAngles.y);
     }
 
-    void OnApplicationQuit()
-    {
-        Debug.Log("Snake: Application quitting. Clearing saved player state for next session.");
-        PlayerPrefs.DeleteKey(PosXKey);
-        PlayerPrefs.DeleteKey(PosYKey);
-        PlayerPrefs.DeleteKey(PosZKey);
-        PlayerPrefs.DeleteKey(RotYKey);
-        PlayerPrefs.Save();
-    }
-
+    // --- Основная Логика Движения ---
     public void StartMoving(int steps)
     {
-        if (isMoving || waitingForTurnChoice)
+        if (IsCurrentlyExecutingMovement())
         {
-            Debug.LogWarning("Snake: Already moving or waiting for turn choice. New movement for " + steps + " steps ignored.");
+            Debug.LogWarning("Snake: Already moving/waiting. New movement for " + steps + " steps ignored.");
             return;
         }
         currentDiceSteps = steps;
-        UpdateMovesValueUIText(currentDiceSteps);
         Debug.Log("Snake: StartMoving called for " + currentDiceSteps + " steps.");
-        UpdateButtonRollDiceVisibility();
+        UpdateUIAndButton();
 
-        if (moveCoroutine != null) StopCoroutine(moveCoroutine);
-        moveCoroutine = StartCoroutine(MoveStepsCoroutine(currentDiceSteps));
+        if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
+        primaryMoveCoroutine = StartCoroutine(MoveStepsCoroutine(currentDiceSteps));
     }
 
-    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially)
+    IEnumerator MoveStepsCoroutine(int stepsToMoveInitially) // Движение по основной дороге
     {
+        if (isMovingOnLoop)
+        {
+            Debug.Log("Snake: MoveStepsCoroutine called, but currently on a loop. Aborting.");
+            yield break;
+        }
         isMoving = true;
-        Debug.Log("Snake: MoveStepsCoroutine started. Initial steps: " + stepsToMoveInitially + ". Current steps: " + currentDiceSteps);
+        UpdateUIAndButton();
 
-        while (currentDiceSteps > 0 && !waitingForTurnChoice)
+        while (currentDiceSteps > 0 && !waitingForTurnChoice && !isMovingOnLoop)
         {
             Vector3 startPosition = transform.position;
             Vector3 endPosition = startPosition + transform.forward * stepDistance;
             float elapsedTime = 0;
-
-            Debug.Log("Snake: Moving one step from " + startPosition + " to " + endPosition + ". Steps remaining: " + (currentDiceSteps - 1));
+            Debug.Log($"Snake: Main path step. From {startPosition} to {endPosition}. Steps left: {currentDiceSteps - 1}");
 
             while (elapsedTime < moveDuration)
             {
@@ -162,15 +174,14 @@ public class snake : MonoBehaviour
                 yield return null;
             }
             transform.position = endPosition;
-
             currentDiceSteps--;
             UpdateMovesValueUIText(currentDiceSteps);
         }
 
         isMoving = false;
-        Debug.Log("Snake: MoveStepsCoroutine finished. isMoving: " + isMoving + ", waitingForTurnChoice: " + waitingForTurnChoice + ", currentDiceSteps: " + currentDiceSteps);
+        Debug.Log("Snake: MoveStepsCoroutine finished. WaitingForTurn: " + waitingForTurnChoice + ", OnLoop: " + isMovingOnLoop + ", StepsLeft: " + currentDiceSteps);
 
-        if (!waitingForTurnChoice)
+        if (!waitingForTurnChoice && !isMovingOnLoop) // Если не прервано развилкой или петлей
         {
             OnMovementFinished();
         }
@@ -178,87 +189,165 @@ public class snake : MonoBehaviour
 
     void OnMovementFinished()
     {
-        Debug.Log("Snake: All movement completed.");
+        Debug.Log("Snake: All movement sequence completed. Final steps: " + currentDiceSteps);
         if (currentDiceSteps < 0) currentDiceSteps = 0;
-        UpdateMovesValueUIText(currentDiceSteps);
-        UpdateButtonRollDiceVisibility();
+        isMoving = false;
+        isMovingOnLoop = false; // Убедимся, что все флаги движения сброшены
+        waitingForTurnChoice = false;
+        UpdateUIAndButton();
         SavePlayerState();
     }
 
+    // --- Логика Развилок и Боковых Петель ---
     public void ReachedTurnPoint()
     {
         if (waitingForTurnChoice)
         {
-            Debug.Log("Snake: ReachedTurnPoint called, but already waiting for turn choice. Ignored.");
+            Debug.Log("Snake: ReachedTurnPoint, but already waiting.");
             return;
         }
+        Debug.Log("Snake: Reached Turn Point. Current steps: " + currentDiceSteps);
 
-        if (isMoving || (currentDiceSteps > 0 && !waitingForTurnChoice))
-        {
-            Debug.Log("Snake: Reached Turn Point. CurrentDiceSteps: " + currentDiceSteps);
-            waitingForTurnChoice = true;
-            isMoving = false;
+        // Останавливаем любое текущее движение
+        isMoving = false;
+        isMovingOnLoop = false;
+        if (primaryMoveCoroutine != null) { StopCoroutine(primaryMoveCoroutine); primaryMoveCoroutine = null; }
+        if (loopMoveCoroutine != null) { StopCoroutine(loopMoveCoroutine); loopMoveCoroutine = null; }
 
-            if (moveCoroutine != null)
-            {
-                StopCoroutine(moveCoroutine);
-                moveCoroutine = null;
-                Debug.Log("Snake: MoveCoroutine stopped by ReachedTurnPoint.");
-            }
+        waitingForTurnChoice = true;
+        stepsRemainingAfterTurn = currentDiceSteps; // Сохраняем шаги на момент развилки
 
-            stepsRemainingAfterTurn = currentDiceSteps;
-
-            if (turnChoiceUI != null)
-            {
-                turnChoiceUI.SetActive(true);
-                Debug.Log("Snake: TurnChoiceUI activated.");
-            }
-            UpdateButtonRollDiceVisibility();
-        }
-        else
-        {
-            Debug.LogWarning("Snake: Reached Turn Point but not in a state to show turn UI.");
-        }
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
+        UpdateUIAndButton();
     }
 
     public void HandleTurnChoice(bool turnLeft)
     {
         if (!waitingForTurnChoice)
         {
-            Debug.LogWarning("Snake: HandleTurnChoice called, but not waiting for a choice.");
+            Debug.LogWarning("Snake: HandleTurnChoice called, but not waiting.");
             return;
         }
         if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
+        waitingForTurnChoice = false; // Сразу сбрасываем, так как выбор сделан
 
-        Debug.Log("Snake: HandleTurnChoice. Turn Left: " + turnLeft + ". Steps to continue: " + stepsRemainingAfterTurn);
+        currentDiceSteps = stepsRemainingAfterTurn; // Восстанавливаем шаги для обработки
+        Debug.Log($"Snake: HandleTurnChoice. Left: {turnLeft}. Steps available: {currentDiceSteps}");
 
-        float rotationYAmount = turnLeft ? -90f : 90f;
-        StartCoroutine(RotateCoroutine(rotationYAmount, () => {
-            waitingForTurnChoice = false;
+        Transform[] targetLoopWaypoints = turnLeft ? leftLoopWaypoints : rightLoopWaypoints;
+        int loopCost = turnLeft ? leftLoopCost : rightLoopCost; // Используем заданную стоимость петли
 
-            if (stepsRemainingAfterTurn > 0)
+        if (targetLoopWaypoints != null && targetLoopWaypoints.Length > 0)
+        {
+            if (currentDiceSteps >= loopCost) // Проверяем, хватает ли шагов на СТОИМОСТЬ петли
             {
-                currentDiceSteps = stepsRemainingAfterTurn;
-                UpdateMovesValueUIText(currentDiceSteps);
-                Debug.Log("Snake: Continuing movement for " + currentDiceSteps + " steps after turn.");
-                StartMoving(currentDiceSteps);
+                Debug.Log($"Snake: Starting {(turnLeft ? "left" : "right")} loop. Cost: {loopCost}.");
+                isMovingOnLoop = true;
+                UpdateUIAndButton();
+                if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
+                loopMoveCoroutine = StartCoroutine(MoveAlongLoopCoroutine(targetLoopWaypoints, loopCost));
             }
             else
             {
-                Debug.Log("Snake: No steps remaining after turn choice.");
-                OnMovementFinished();
+                Debug.Log($"Snake: Not enough steps for {(turnLeft ? "left" : "right")} loop. Has: {currentDiceSteps}, Needs: {loopCost}. Ending turn.");
+                OnMovementFinished(); // Завершаем ход, если шагов не хватает
             }
-            stepsRemainingAfterTurn = 0;
-        }));
+        }
+        else // Если это не петля, а стандартный поворот на 90 градусов
+        {
+            Debug.Log("Snake: Standard turn (no loop waypoints defined or chosen).");
+            isMoving = true; // Устанавливаем флаг для поворота
+            UpdateUIAndButton();
+            float rotationYAmount = turnLeft ? -90f : 90f;
+            if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
+            primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () => {
+                isMoving = false; // Поворот завершен
+                if (currentDiceSteps > 0)
+                {
+                    Debug.Log("Snake: Continuing on main path after standard turn for " + currentDiceSteps + " steps.");
+                    StartMoving(currentDiceSteps); // Передаем ОСТАВШИЕСЯ шаги
+                }
+                else
+                {
+                    OnMovementFinished();
+                }
+            }));
+        }
     }
 
+    IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop)
+    {
+        isMovingOnLoop = true; // Already set, but good to be explicit
+        isMoving = true; // Общий флаг движения тоже активен
+        UpdateUIAndButton();
+
+        // Поворот к первой точке петли
+        if (waypoints.Length > 0)
+        {
+            yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[0].position));
+        }
+
+        for (int i = 0; i < waypoints.Length; i++)
+        {
+            Vector3 startPosition = transform.position;
+            Vector3 endPosition = waypoints[i].position;
+            Debug.Log($"Snake: Loop step to waypoint {i} ({endPosition}).");
+
+            float elapsedTime = 0;
+            while (elapsedTime < loopMoveDurationPerWaypoint)
+            {
+                transform.position = Vector3.Lerp(startPosition, endPosition, elapsedTime / loopMoveDurationPerWaypoint);
+                // Плавный поворот к следующей точке петли во время движения
+                if (i + 1 < waypoints.Length)
+                {
+                    RotateTowardsTargetDuringMovement(waypoints[i + 1].position);
+                }
+                else
+                {
+                    // Если это последняя точка, поворачиваемся в ее направлении (или в направлении выхода с петли)
+                    // Предполагается, что последняя точка waypoints.rotation уже настроена правильно для выхода на дорогу
+                    RotateTowardsTargetDuringMovement(endPosition + waypoints[i].forward); // Поворот по направлению waypoint'а
+                }
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+            transform.position = endPosition;
+            // После достижения waypoint'а, можно установить его поворот, если он важен
+            // transform.rotation = waypoints[i].rotation; 
+        }
+
+        // Шаги за петлю списываются единовременно
+        currentDiceSteps -= costOfLoop;
+        UpdateMovesValueUIText(currentDiceSteps);
+        Debug.Log($"Snake: Loop finished. Cost: {costOfLoop}. Steps remaining: {currentDiceSteps}.");
+
+        // После петли, персонаж должен быть на последней точке waypoints.
+        // Убедимся, что поворот соответствует выходу с петли (если последняя точка имеет нужный rotation)
+        if (waypoints.Length > 0) transform.rotation = waypoints[waypoints.Length - 1].rotation;
+
+
+        isMovingOnLoop = false;
+        isMoving = false; // Завершаем общее движение
+
+        if (currentDiceSteps > 0)
+        {
+            Debug.Log("Snake: Continuing on main path after loop.");
+            StartMoving(currentDiceSteps); // Продолжаем с оставшимися шагами
+        }
+        else
+        {
+            OnMovementFinished();
+        }
+    }
+
+    // --- Вспомогательные Корутины для Движения и Поворотов ---
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
     {
-        isMoving = true;
+        isMoving = true; // Флаг на время поворота
+        UpdateUIAndButton();
         Quaternion startRotation = transform.rotation;
         Quaternion endRotation = startRotation * Quaternion.Euler(0, angleY, 0);
         float elapsedTime = 0;
-
         while (elapsedTime < rotateDuration)
         {
             transform.rotation = Quaternion.Slerp(startRotation, endRotation, elapsedTime / rotateDuration);
@@ -266,22 +355,46 @@ public class snake : MonoBehaviour
             yield return null;
         }
         transform.rotation = endRotation;
-        isMoving = false;
+        isMoving = false; // Поворот завершен
         onRotationComplete?.Invoke();
     }
 
-    void UpdateButtonRollDiceVisibility()
+    IEnumerator RotateTowardsTargetCoroutine(Vector3 targetPosition) // Поворот к цели перед началом движения
     {
-        if (buttonRollDice != null)
+        isMoving = true;
+        UpdateUIAndButton();
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        if (direction != Vector3.zero)
         {
-            bool canRoll = !isMoving && !waitingForTurnChoice && currentDiceSteps <= 0;
-            buttonRollDice.SetActive(canRoll);
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            float elapsedTime = 0;
+            Quaternion startRotation = transform.rotation;
+            while (elapsedTime < rotateDuration)
+            {
+                transform.rotation = Quaternion.Slerp(startRotation, targetRotation, elapsedTime / rotateDuration);
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+            transform.rotation = targetRotation;
+        }
+        isMoving = false;
+    }
+
+    void RotateTowardsTargetDuringMovement(Vector3 targetPosition) // Плавный поворот во время движения
+    {
+        Vector3 direction = (targetPosition - transform.position).normalized;
+        if (direction != Vector3.zero)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(direction);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * loopRotateSpeed);
         }
     }
 
-    public bool IsMoving()
+    // --- Методы Управления UI и Состоянием ---
+    void UpdateUIAndButton()
     {
-        return isMoving || waitingForTurnChoice;
+        UpdateMovesValueUIText(currentDiceSteps);
+        UpdateButtonRollDiceVisibility();
     }
 
     void UpdateMovesValueUIText(int moves)
@@ -292,29 +405,40 @@ public class snake : MonoBehaviour
         }
     }
 
+    void UpdateButtonRollDiceVisibility()
+    {
+        if (buttonRollDice != null)
+        {
+            buttonRollDice.SetActive(!IsCurrentlyExecutingMovement() && currentDiceSteps <= 0);
+        }
+    }
+
+    public bool IsCurrentlyExecutingMovement() // Один метод для проверки всех состояний движения/ожидания
+    {
+        return isMoving || waitingForTurnChoice || isMovingOnLoop;
+    }
+
+    // --- Обработка Триггеров ---
     void OnTriggerEnter(Collider other)
     {
-        if (isMoving || waitingForTurnChoice)
+        if (IsCurrentlyExecutingMovement()) // Игнорируем триггеры во время активного движения/выбора
         {
+            // Debug.Log("Snake: OnTriggerEnter for " + other.name + " ignored during movement/choice.");
             return;
         }
-
         Debug.Log("Snake: OnTriggerEnter with " + other.name);
 
-        if (other.CompareTag("TurnPointTrigger"))
+        if (other.CompareTag("TurnPointTrigger")) // Убедитесь, что ваши триггеры развилок имеют этот тег
         {
             Debug.Log("Snake: Hit a TurnPointTrigger directly.");
             ReachedTurnPoint();
         }
-        else if (other.TryGetComponent(out Eat eatScript))
-        {
-            Debug.Log("Snake: Entered Eat trigger.");
-        }
+        // else if (other.TryGetComponent(out Eat eatScript)) { /* Логика еды */ }
         else if (other.TryGetComponent(out Vopros voprosScript))
         {
             Debug.Log("Snake: Entered Vopros trigger. Saving state and loading Vopros scene.");
             SavePlayerState();
-            SceneManager.LoadScene("Vopros");
+            SceneManager.LoadScene("Vopros"); // Убедитесь, что сцена "Vopros" добавлена в Build Settings
         }
     }
 }

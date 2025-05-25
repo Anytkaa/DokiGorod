@@ -8890,6 +8890,10 @@ PrefabInstance:
       propertyPath: m_Lightmapping
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 65702495048144492, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
       propertyPath: m_Name
       value: Kino
@@ -8905,6 +8909,7 @@ PrefabInstance:
     - {fileID: 9019243893214338414, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
     - {fileID: -2818631016347784500, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
     - {fileID: -208595431880416365, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
+    - {fileID: 65702495048144492, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: fc8851e84cc19f7469d777163f91e7d1, type: 3}
@@ -20374,16 +20379,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a9d54c4965eef374cb2b1f4a22dc7393, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  pas14: {fileID: 0}
-  pas20: {fileID: 0}
   buttonRollDice: {fileID: 187386200}
+  movesValueText: {fileID: 911132486}
   stepDistance: 10
   moveDuration: 1
   rotateDuration: 0.3
+  loopMoveDurationPerWaypoint: 0.9
+  loopRotateSpeed: 0.4
   turnChoiceUI: {fileID: 703548145}
   turnLeftButton: {fileID: 1007281102}
   turnRightButton: {fileID: 1186235392}
-  movesValueText: {fileID: 911132486}
+  leftLoopWaypoints:
+  - {fileID: 159864422}
+  - {fileID: 1589109493}
+  - {fileID: 1273843310}
+  leftLoopCost: 1
+  rightLoopWaypoints:
+  - {fileID: 159864422}
+  - {fileID: 1291113841}
+  - {fileID: 233457832}
+  - {fileID: 1273843310}
+  rightLoopCost: 1
 --- !u!1001 &1916042574
 PrefabInstance:
   m_ObjectHideFlags: 0

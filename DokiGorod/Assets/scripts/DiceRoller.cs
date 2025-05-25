@@ -76,7 +76,7 @@ public class GameController : MonoBehaviour
         if (!isRolling && (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0)))
         {
             // Проверяем, что персонаж не двигается, прежде чем позволить бросить кубик снова
-            if (playerSnakeScript != null && !playerSnakeScript.IsMoving()) // Предполагается, что в snake.cs есть метод IsMoving()
+            if (playerSnakeScript != null && !playerSnakeScript.IsCurrentlyExecutingMovement()) // Предполагается, что в snake.cs есть метод IsMoving()
             {
                 InitiateRoll();
             }
