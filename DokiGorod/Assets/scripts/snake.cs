@@ -125,6 +125,8 @@ public class snake : MonoBehaviour
         }
         Debug.Log($"Snake: StartMoving initiated with {steps} steps.");
 
+        stepsTaken = 0;
+
         // Проверяем, начинаем ли мы движение с одного из специальных полей
         startedMoveFromSpecialField = (passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove);
 
@@ -141,6 +143,7 @@ public class snake : MonoBehaviour
     {
         if (isMovingOnLoop) { Debug.LogWarning("Snake: MoveStepsCoroutine called while isMovingOnLoop. Aborting."); yield break; }
         isMoving = true;
+        stepsTaken = 0; // Сбрасываем счетчик при начале движения
         UpdateUIAndButton();
 
         bool firstMicroStepTakenInSequence = false; // Отслеживаем самый первый микро-шаг всей последовательности
@@ -173,6 +176,7 @@ public class snake : MonoBehaviour
             startedMoveFromSpecialField = false; // После первого полного шага мы точно ушли со стартового поля
 
             currentDiceSteps--;
+            stepsTaken++; // Увеличиваем счетчик шагов
             UpdateMovesValueUIText(currentDiceSteps);
 
             if (CheckAndHandleStopFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { isMoving = false; OnMovementFinished(); yield break; }
@@ -184,21 +188,40 @@ public class snake : MonoBehaviour
     
     void OnMovementFinished()
     {
-        isMoving = false; isMovingOnLoop = false; waitingForTurnChoice = false; 
-        startedMoveFromSpecialField = false; // Сбрасываем флаг
+    isMoving = false; 
+    isMovingOnLoop = false; 
+    waitingForTurnChoice = false; 
+    startedMoveFromSpecialField = false; // Сбрасываем флаг
 
-        // Финальные проверки, если не были прерваны ранее
-        if (!hasStoppedOnStopFieldThisMove && !passportEventCurrentlyActive)
+    // Финальные проверки, если не были прерваны ранее
+    if (!hasStoppedOnStopFieldThisMove && !passportEventCurrentlyActive)
+    {
+        if (!CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true)) 
         {
-            if (!CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true)) 
+            CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true); 
+        }
+    }
+
+    // Проверка на активацию вопроса после остановки (если выпало 2)
+    if (stepsTaken == 2 && currentDiceSteps == 0)
+    {
+        // Проверяем все коллайдеры в небольшом радиусе вокруг игрока
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, 0.5f);
+        foreach (var collider in hitColliders)
+        {
+            if (collider.TryGetComponent<Vopros>(out _))
             {
-                CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true); 
+                Debug.Log("Player stopped on question field after rolling 2 - activating question!");
+                SavePlayerState();
+                SceneManager.LoadScene("Vopros");
+                return; // Выходим, чтобы не выполнять остальной код
             }
         }
-        
-        UpdateUIAndButton(); 
-        SavePlayerState();
-        Debug.Log($"Snake: OnMovementFinished. Steps: {currentDiceSteps}. PassportActive: {passportEventCurrentlyActive}, StoppedOnStop: {hasStoppedOnStopFieldThisMove}");
+    }
+
+    UpdateUIAndButton(); 
+    SavePlayerState();
+    Debug.Log($"Snake: OnMovementFinished. Steps: {currentDiceSteps}. PassportActive: {passportEventCurrentlyActive}, StoppedOnStop: {hasStoppedOnStopFieldThisMove}");
     }
     
     // --- Логика Паспортного Поля ---
@@ -466,28 +489,35 @@ public class snake : MonoBehaviour
         return isMoving || waitingForTurnChoice || isMovingOnLoop;
     }
 
-    void OnTriggerEnter(Collider other)
-    {
-        Debug.Log($"OnTriggerEnter with {other.name}. isMoving: {isMoving}, waitChoice: {waitingForTurnChoice}, onLoop: {isMovingOnLoop}, passportActive: {passportEventCurrentlyActive}, stopFieldActive: {hasStoppedOnStopFieldThisMove}");
+    private int stepsTaken = 0; // Счетчик шагов в текущем ходе
 
-        if (isMoving || isMovingOnLoop || waitingForTurnChoice || passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove)
-        {
-            Debug.Log($"OnTriggerEnter: Ignored for {other.name} due to current state.");
-            return; 
-        }
-        
-        if (currentDiceSteps <= 0) 
-        {
-            if (other.TryGetComponent(out Vopros v)) { 
-                SavePlayerState(); 
-                SceneManager.LoadScene("Vopros"); 
-                return; 
-            }
-        }
-        
-        if (other.CompareTag("TurnPointTrigger")) 
-        {
-            ReachedTurnPoint(); 
-        }
+    // Модифицируем метод OnTriggerEnter:
+    void OnTriggerEnter(Collider other)
+{
+    Debug.Log($"OnTriggerEnter with {other.name}. Steps: {stepsTaken}, isMoving: {isMoving}, DiceSteps: {currentDiceSteps}");
+
+    // Обработка поворота имеет приоритет
+    if (other.CompareTag("TurnPointTrigger")) 
+    {
+        ReachedTurnPoint();
+        return;
     }
+
+    // Для вопроса проверяем только компонент Vopros
+    if (other.TryGetComponent<Vopros>(out _))
+    {
+        Debug.Log("Detected Vopros field");
+        
+        // Modified conditions:
+        // 1. Either we're not moving OR we're on the last step
+        // 2. Total steps in this move were exactly 2
+        if ((!isMoving || currentDiceSteps == 1) && stepsTaken == 1) 
+        {
+            Debug.Log("Question conditions met - activating question!");
+            SavePlayerState();
+            SceneManager.LoadScene("Vopros");
+        }
+        return;
+    }
+}
 }

@@ -16744,7 +16744,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 4149190283065579029, guid: 434e7e5fea9e12943815e441f80abb49, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1982945736}
   m_SourcePrefab: {fileID: 100100000, guid: 434e7e5fea9e12943815e441f80abb49, type: 3}
 --- !u!1 &1256338071
 GameObject:
@@ -25021,6 +25024,8 @@ MonoBehaviour:
   passportFieldTolerance: 0.5
   passportUIPanel: {fileID: 300095273}
   getPassportButtonObject: {fileID: 1452328002}
+  stopFieldXCoordinate: 140
+  stopFieldTolerance: 0.5
 --- !u!1001 &1916042574
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -25741,6 +25746,23 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 82ab379e3b28c4f55982e6e1f71d0a1d, type: 3}
+--- !u!1 &1982945732 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 4149190283065579029, guid: 434e7e5fea9e12943815e441f80abb49, type: 3}
+  m_PrefabInstance: {fileID: 1250846782}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1982945736
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1982945732}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0f321f2c75c774a4b894180bead8d4c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1986194950
 GameObject:
   m_ObjectHideFlags: 0
