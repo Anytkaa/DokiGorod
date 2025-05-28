@@ -6,6 +6,8 @@ using UnityEngine.SceneManagement;
 
 public class snake : MonoBehaviour
 {
+    // ... (все ваши заголовки и переменные до статической переменной паспорта остаются без изменений) ...
+
     [Header("Объекты и UI")]
     public GameObject buttonRollDice;
     public Text movesValueText;
@@ -14,7 +16,7 @@ public class snake : MonoBehaviour
     public float stepDistance = 10.0f;
     public float moveDuration = 0.5f;
     public float rotateDuration = 0.3f;
-    public float loopMoveDurationPerWaypoint = 0.9f; // Убедитесь, что это значение не слишком маленькое
+    public float loopMoveDurationPerWaypoint = 0.9f;
     public float loopRotateSpeed = 5f;
 
     [Header("UI для Развилки")]
@@ -29,19 +31,19 @@ public class snake : MonoBehaviour
     public int rightLoopCost = 3;
 
     [Header("Специальные Поля и UI Событий")]
-    public float passportFieldXCoordinate = 80.0f; // Координата X для поля "14 лет"
-    public float passportFieldTolerance = 0.5f; // Допуск для определения поля
-    public GameObject passportUIPanel; // Панель "Получите паспорт"
-    public GameObject getPassportButtonObject; // Кнопка "Получить паспорт" на поле 14 лет
+    public float passportFieldXCoordinate = 80.0f;
+    public float passportFieldTolerance = 0.5f;
+    public GameObject passportUIPanel;
+    public GameObject getPassportButtonObject;
 
-    public float stopFieldXCoordinate = 140.0f; // Координата X для поля "Стоп"
-    public float stopFieldTolerance = 0.5f; // Допуск для определения поля
+    public float stopFieldXCoordinate = 140.0f;
+    public float stopFieldTolerance = 0.5f;
 
     [Header("UI Проверки Паспорта на Стоп-Поле")]
-    public GameObject passportCheckPanel; // Панель с сообщением "Проверка паспорта"
-    public Button presentPassportButton; // Кнопка "Предъявить документ"
-    public GameObject passportSuccessPanel; // Панель "Молодец"
-    public GameObject passportFailPanel; // Панель "Не молодец"
+    public GameObject passportCheckPanel;
+    public Button presentPassportButton;
+    public GameObject passportSuccessPanel;
+    public GameObject passportFailPanel;
 
     public static int money = 5000;
 
@@ -63,32 +65,31 @@ public class snake : MonoBehaviour
     private const string PosZKey = "PlayerPositionZ_Snake_DokiGorod";
     private const string RotYKey = "PlayerRotationY_Snake_DokiGorod";
     private const string DiceRollKey = "LastDiceRoll";
-    private const string HasPassportKey = "PlayerHasPassport";
+    private const string HasPassportKey = "PlayerHasPassport_DokiGorod"; // Сделаем ключ уникальнее
 
     private int stepsTakenInCurrentMove = 0;
 
-    // --- НОВАЯ СТАТИЧЕСКАЯ ПЕРЕМЕННАЯ ДЛЯ ОТСЛЕЖИВАНИЯ ПАСПОРТА В ТЕКУЩЕЙ СЕССИИ ---
-    private static bool _sessionObtainedPassport = false;
-    // --- КОНЕЦ НОВОЙ ПЕРЕМЕННОЙ ---
+    // Статическая переменная для отслеживания паспорта в текущей сессии.
+    // Инициализируется из PlayerPrefs при старте.
+    private static bool _sessionHasPassport = false;
+    private static bool _sessionPassportStatusInitialized = false; // Флаг, что инициализация уже была
+
+    void Awake() // Используем Awake для самой ранней инициализации
+    {
+        InitializePassportStatus();
+    }
 
     void Start()
     {
         gameObject.name = "Player_Snake";
+        // Убедимся, что статус паспорта инициализирован, если Awake не сработал первым (маловероятно, но для надежности)
+        InitializePassportStatus();
 
-        // --- ДЛЯ ТЕСТИРОВАНИЯ: СБРОС СОСТОЯНИЯ ПАСПОРТА ПРИ КАЖДОМ ЗАПУСКЕ ---
-        // PlayerPrefs.DeleteKey(HasPassportKey); // Оставьте закомментированным для сохранения паспорта
+        // ----- ВАЖНО: УДАЛИТЕ ИЛИ ЗАКОММЕНТИРУЙТЕ ЭТИ СТРОКИ НАВСЕГДА ДЛЯ РЕЛИЗА! -----
+        // PlayerPrefs.DeleteKey(HasPassportKey);
         // PlayerPrefs.Save();
-        // --- КОНЕЦ ТЕСТИРОВАНИЯ ---
-
-        // Если игра только что запущена (не перезагрузка скрипта в редакторе),
-        // и _sessionObtainedPassport еще false, проверяем PlayerPrefs.
-        // Это нужно, чтобы подхватить паспорт из предыдущей сессии, если он был сохранен
-        // и если строки удаления выше закомментированы.
-        if (!_sessionObtainedPassport && PlayerPrefs.GetInt(HasPassportKey, 0) == 1)
-        {
-            _sessionObtainedPassport = true;
-            Debug.Log("Start(): Passport loaded from PlayerPrefs into session flag.");
-        }
+        // Debug.LogWarning("ВНИМАНИЕ: Тестовый код для удаления ключа паспорта активен в Start()!");
+        // ----- КОНЕЦ ВАЖНОГО ПРЕДУПРЕЖДЕНИЯ -----
 
 
         LoadPlayerState();
@@ -128,13 +129,44 @@ public class snake : MonoBehaviour
         }
     }
 
+    // Инициализация статуса паспорта из PlayerPrefs.
+    // Должна вызываться один раз при запуске/перезапуске скрипта.
+    private static void InitializePassportStatus()
+    {
+        // Если инициализация уже была в этой сессии (например, после перезагрузки скриптов,
+        // но без перезапуска Play Mode), то _sessionHasPassport уже содержит актуальное
+        // состояние для текущей сессии, не нужно его перезаписывать из PlayerPrefs,
+        // так как PlayerPrefs могли быть не обновлены, если паспорт получен только что.
+        // Этот флаг _sessionPassportStatusInitialized сбрасывается только при полном
+        // перезапуске Play Mode, когда статические переменные обнуляются.
+        if (_sessionPassportStatusInitialized)
+        {
+            return;
+        }
+
+        _sessionHasPassport = (PlayerPrefs.GetInt(HasPassportKey, 0) == 1);
+        _sessionPassportStatusInitialized = true; // Помечаем, что инициализация прошла
+        Debug.Log($"InitializePassportStatus: Статус паспорта из PlayerPrefs: {_sessionHasPassport}. Ключ: {HasPassportKey}");
+    }
+
+    // Метод для проверки, есть ли у игрока паспорт
+    private bool PlayerEffectivelyHasPassport()
+    {
+        // Всегда проверяем актуальное значение _sessionHasPassport,
+        // так как оно обновляется немедленно при получении паспорта.
+        // PlayerPrefs могут использоваться для восстановления между сессиями.
+        InitializePassportStatus(); // Убедимся, что инициализация была, на всякий случай
+        return _sessionHasPassport;
+    }
+
     void OnApplicationQuit()
     {
         PlayerPrefs.DeleteKey(PosXKey); PlayerPrefs.DeleteKey(PosYKey); PlayerPrefs.DeleteKey(PosZKey); PlayerPrefs.DeleteKey(RotYKey);
-        // PlayerPrefs.DeleteKey(HasPassportKey); 
+        // НЕ УДАЛЯЕМ HasPassportKey здесь, чтобы он сохранялся между сессиями игры
         PlayerPrefs.Save();
     }
 
+    // ... (LoadPlayerState, SavePlayerState, StartMoving, MoveStepsCoroutine, OnMovementFinished, ForceStopMovementSequence - без изменений) ...
     void LoadPlayerState()
     {
         if (PlayerPrefs.HasKey(PosXKey))
@@ -268,6 +300,7 @@ public class snake : MonoBehaviour
         Debug.Log($"Snake: OnMovementFinished. Все проверки пройдены, специальных полей не встречено. Готов к следующему ходу.");
     }
 
+
     void ForceStopMovementSequence(string reason)
     {
         Debug.Log($"Snake: Принудительная остановка последовательности движения из-за: {reason}");
@@ -280,13 +313,13 @@ public class snake : MonoBehaviour
         OnMovementFinished();
     }
 
+
     bool CheckAndShowPassportPanelIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheckAfterStop = false)
     {
         if (passportCheckEventActive) return false;
 
-        // Используем _sessionObtainedPassport ИЛИ PlayerPrefs для определения наличия паспорта
-        bool passportEffectivelyObtained = _sessionObtainedPassport || (PlayerPrefs.GetInt(HasPassportKey, 0) == 1);
-        Debug.Log($"CheckAndShowPassportPanelIfNeeded: Эффективный статус паспорта: {passportEffectivelyObtained} (Session: {_sessionObtainedPassport}, Prefs: {PlayerPrefs.GetInt(HasPassportKey, 0) == 1})");
+        bool passportEffectivelyObtained = PlayerEffectivelyHasPassport(); // Используем новый метод
+        Debug.Log($"CheckAndShowPassportPanelIfNeeded: Эффективный статус паспорта: {passportEffectivelyObtained}");
 
         if (passportEffectivelyObtained)
         {
@@ -312,6 +345,7 @@ public class snake : MonoBehaviour
         }
     }
 
+    // ... (ShowPassportUIPanel, HidePassportUIPanel - без изменений) ...
     void ShowPassportUIPanel()
     {
         if (passportUIPanel != null)
@@ -340,13 +374,15 @@ public class snake : MonoBehaviour
     {
         Debug.Log("Кнопка 'Получить паспорт' нажата!");
         PlayerPrefs.SetInt(HasPassportKey, 1);
-        PlayerPrefs.Save();
-        _sessionObtainedPassport = true; // --- УСТАНАВЛИВАЕМ ФЛАГ СЕССИИ ---
-        Debug.Log($"Статус паспорта после установки: PlayerPrefs: {(PlayerPrefs.GetInt(HasPassportKey, 0) == 1)}, SessionFlag: {_sessionObtainedPassport}");
+        PlayerPrefs.Save(); // Сохраняем немедленно
+        _sessionHasPassport = true; // Обновляем флаг сессии
+        // _sessionPassportStatusInitialized остается true, т.к. сессия та же
+        Debug.Log($"Статус паспорта после установки: PlayerPrefs: {(PlayerPrefs.GetInt(HasPassportKey, 0) == 1)}, SessionFlag: {_sessionHasPassport}");
         HidePassportUIPanel();
         OnMovementFinished();
     }
 
+    // ... (CheckAndHandleStopFieldIfNeeded, ShowPassportCheckPanel, HidePassportCheckPanel - без изменений) ...
     bool CheckAndHandleStopFieldIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheck = false)
     {
         if (passportCheckEventActive) return true;
@@ -399,16 +435,15 @@ public class snake : MonoBehaviour
         }
     }
 
+
     public void OnPresentPassportButtonClicked()
     {
         Debug.Log("Кнопка 'Предъявить документ' нажата!");
         HidePassportCheckPanel();
 
-        bool hasPassportPlayerPrefs = (PlayerPrefs.GetInt(HasPassportKey, 0) == 1);
-        // --- ПРОВЕРЯЕМ ОБА ИСТОЧНИКА: PLAYERPREFS И ФЛАГ СЕССИИ ---
-        bool effectivelyHasPassport = hasPassportPlayerPrefs || _sessionObtainedPassport;
+        bool effectivelyHasPassport = PlayerEffectivelyHasPassport(); // Используем новый метод
 
-        Debug.Log($"Статус паспорта: PlayerPrefs: {hasPassportPlayerPrefs}, SessionFlag: {_sessionObtainedPassport}. Эффективный статус: {effectivelyHasPassport}");
+        Debug.Log($"Эффективный статус паспорта при предъявлении: {effectivelyHasPassport}");
 
         if (effectivelyHasPassport)
         {
@@ -430,6 +465,7 @@ public class snake : MonoBehaviour
         }
     }
 
+    // ... (MovePlayerBackThreeFieldsCoroutine, HidePanelAfterDelay, ReachedTurnPoint, HandleTurnChoice, MoveAlongLoopCoroutine, RotateCoroutine, RotateTowardsTargetCoroutine, RotateTowardsTargetDuringMovement, UpdateUIAndButton, UpdateMovesValueUIText, UpdateButtonRollDiceVisibility, IsCurrentlyExecutingMovement, OnTriggerEnter - БЕЗ ИЗМЕНЕНИЙ) ...
     IEnumerator MovePlayerBackThreeFieldsCoroutine(System.Action onComplete)
     {
         Debug.Log("Перемещаем игрока на 3 поля назад...");
@@ -455,14 +491,12 @@ public class snake : MonoBehaviour
         isMoving = false;
         onComplete?.Invoke();
     }
-
     IEnumerator HidePanelAfterDelay(GameObject panel, float delay, System.Action onComplete = null)
     {
         yield return new WaitForSeconds(delay);
         if (panel != null) panel.SetActive(false);
         onComplete?.Invoke();
     }
-
     public void ReachedTurnPoint()
     {
         Debug.Log($"ReachedTurnPoint ВЫЗВАН. waitChoice: {waitingForTurnChoice}, isMoving: {isMoving}, onLoop: {isMovingOnLoop}, passportActive (14yo): {passportEventCurrentlyActive}, passportCheckActive (Stop): {passportCheckEventActive}");
@@ -532,7 +566,6 @@ public class snake : MonoBehaviour
             }));
         }
     }
-
     IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop)
     {
         isMovingOnLoop = true; isMoving = true; UpdateUIAndButton();
@@ -577,7 +610,6 @@ public class snake : MonoBehaviour
         if (currentDiceSteps > 0) { StartMoving(currentDiceSteps); }
         else OnMovementFinished();
     }
-
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
     {
         Quaternion startRot = transform.rotation;
@@ -651,4 +683,5 @@ public class snake : MonoBehaviour
             return;
         }
     }
+
 }
