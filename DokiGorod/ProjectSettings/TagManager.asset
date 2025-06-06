@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - Age14Cell
+  - TurnPointTrigger
   layers:
   - Default
   - TransparentFX
