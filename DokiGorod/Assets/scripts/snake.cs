@@ -44,6 +44,7 @@ public class snake : MonoBehaviour
     public Button presentPassportButton;
     public GameObject passportSuccessPanel;
     public GameObject passportFailPanel;
+    public GameObject passportObject;  //паспорт
 
     public static int money = 5000;
 
@@ -90,6 +91,10 @@ public class snake : MonoBehaviour
         // PlayerPrefs.Save();
         // Debug.LogWarning("ВНИМАНИЕ: Тестовый код для удаления ключа паспорта активен в Start()!");
         // ----- КОНЕЦ ВАЖНОГО ПРЕДУПРЕЖДЕНИЯ -----
+
+        PlayerPrefs.DeleteKey(HasPassportKey);
+        PlayerPrefs.Save();
+        Debug.Log("PlayerPrefs очищены. Паспорт сброшен.");
 
 
         LoadPlayerState();
@@ -378,9 +383,15 @@ public class snake : MonoBehaviour
         _sessionHasPassport = true; // Обновляем флаг сессии
         // _sessionPassportStatusInitialized остается true, т.к. сессия та же
         Debug.Log($"Статус паспорта после установки: PlayerPrefs: {(PlayerPrefs.GetInt(HasPassportKey, 0) == 1)}, SessionFlag: {_sessionHasPassport}");
+
+        if (passportObject != null)
+        {
+            passportObject.SetActive(true);  // показываем паспорт
+        }
         HidePassportUIPanel();
         OnMovementFinished();
     }
+
 
     // ... (CheckAndHandleStopFieldIfNeeded, ShowPassportCheckPanel, HidePassportCheckPanel - без изменений) ...
     bool CheckAndHandleStopFieldIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheck = false)
