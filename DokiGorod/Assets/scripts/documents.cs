@@ -3,18 +3,26 @@ using UnityEngine.UI;
 
 public class UIController : MonoBehaviour
 {
-    public GameObject documentsButton;  // кнопка "Пакет документов"
-    public GameObject throwDiceButton;  // кнопка "Кинь кубик"
+    public GameObject documentsButton;        // Кнопка "Пакет документов"
+    public GameObject throwDiceButton;        // Кнопка "Кинь кубик"
+    public GameObject DiceNumberTextObject;   // Текст: число на кубике
+    public GameObject DiceTextObject;         // Текст: надпись "выпало число"
+    public GameObject MoneyTextObject;        // Текст: количество денег
+    public GameObject MoneyObject;            // Панель или фон под деньги
 
-    // Флаг для отслеживания состояния видимости кнопки "Кинь кубик"
-    private bool isThrowDiceButtonVisible = true;
+    // Флаг для отслеживания состояния видимости элементов
+    private bool isUIVisible = true;
 
     public void OnDocumentsButtonClicked()
     {
-        // Переключаем видимость кнопки "Кинь кубик"
-        isThrowDiceButtonVisible = !isThrowDiceButtonVisible;
-        throwDiceButton.SetActive(isThrowDiceButtonVisible);
+        // Переключаем видимость всех указанных UI-элементов
+        isUIVisible = !isUIVisible;
 
-        // Дополнительно можно тут добавить логику переключения камеры и т.п.
+        throwDiceButton.SetActive(isUIVisible);
+        DiceNumberTextObject.SetActive(isUIVisible);
+        DiceTextObject.SetActive(isUIVisible);
+        MoneyTextObject.SetActive(isUIVisible);
+        MoneyObject.SetActive(isUIVisible);
     }
 }
+

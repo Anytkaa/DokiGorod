@@ -24593,6 +24593,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   documentsButton: {fileID: 1026819188}
   throwDiceButton: {fileID: 187386200}
+  DiceNumberTextObject: {fileID: 911132483}
+  DiceTextObject: {fileID: 465522551}
+  MoneyTextObject: {fileID: 889853687}
+  MoneyObject: {fileID: 1256440748}
 --- !u!4 &1712740762
 Transform:
   m_ObjectHideFlags: 0
