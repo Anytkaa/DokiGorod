@@ -1,16 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.UI; // Для стандартного UI Text
 using UnityEngine.SceneManagement;
 
 public class snake : MonoBehaviour
 {
-    // ... (все ваши заголовки и переменные до статической переменной паспорта остаются без изменений) ...
-
     [Header("Объекты и UI")]
     public GameObject buttonRollDice;
     public Text movesValueText;
+    public Text moneyText; // или public TextMeshProUGUI moneyText;
 
     [Header("Настройки Движения")]
     public float stepDistance = 10.0f;
@@ -44,9 +43,17 @@ public class snake : MonoBehaviour
     public Button presentPassportButton;
     public GameObject passportSuccessPanel;
     public GameObject passportFailPanel;
-    public GameObject passportObject;  //паспорт
+    public GameObject passportObject;
+
+    [Header("Настройки Кинотеатра")]
+    public string cinemaTileTag = "CinemaTile"; // Тег для клетки "Кино"
+    public int cinemaVisitCost = 50;      // Стоимость посещения кино
+    public float cinemaFieldXCoordinate = 43.21f; // X координата центра клетки кино
+    public float cinemaFieldTolerance = 1.5f;  // Допуск (половина ширины клетки + немного)
 
     public static int money = 5000;
+    private int _previousMoneyForUI = -1;
+    private bool _cinemaCheckedThisTurn = false;
 
     private bool isMoving = false;
     private bool waitingForTurnChoice = false;
@@ -66,43 +73,29 @@ public class snake : MonoBehaviour
     private const string PosZKey = "PlayerPositionZ_Snake_DokiGorod";
     private const string RotYKey = "PlayerRotationY_Snake_DokiGorod";
     private const string DiceRollKey = "LastDiceRoll";
-    private const string HasPassportKey = "PlayerHasPassport_DokiGorod"; // Сделаем ключ уникальнее
+    private const string HasPassportKey = "PlayerHasPassport_DokiGorod";
+    private const string MoneyKey = "PlayerMoney_DokiGorod";
 
     private int stepsTakenInCurrentMove = 0;
-
-    // Статическая переменная для отслеживания паспорта в текущей сессии.
-    // Инициализируется из PlayerPrefs при старте.
     private static bool _sessionHasPassport = false;
-    private static bool _sessionPassportStatusInitialized = false; // Флаг, что инициализация уже была
+    private static bool _sessionPassportStatusInitialized = false;
 
-    void Awake() // Используем Awake для самой ранней инициализации
+    void Awake()
     {
         InitializePassportStatus();
+        LoadMoney();
     }
 
     void Start()
     {
         gameObject.name = "Player_Snake";
-        // Убедимся, что статус паспорта инициализирован, если Awake не сработал первым (маловероятно, но для надежности)
-        InitializePassportStatus();
-
-        // ----- ВАЖНО: УДАЛИТЕ ИЛИ ЗАКОММЕНТИРУЙТЕ ЭТИ СТРОКИ НАВСЕГДА ДЛЯ РЕЛИЗА! -----
-        // PlayerPrefs.DeleteKey(HasPassportKey);
-        // PlayerPrefs.Save();
-        // Debug.LogWarning("ВНИМАНИЕ: Тестовый код для удаления ключа паспорта активен в Start()!");
-        // ----- КОНЕЦ ВАЖНОГО ПРЕДУПРЕЖДЕНИЯ -----
-
-        PlayerPrefs.DeleteKey(HasPassportKey);
-        PlayerPrefs.Save();
-        Debug.Log("PlayerPrefs очищены. Паспорт сброшен.");
-
+        // InitializePassportStatus() и LoadMoney() уже вызваны в Awake
 
         LoadPlayerState();
 
         if (PlayerPrefs.HasKey(DiceRollKey))
         {
             int stepsFromDice = PlayerPrefs.GetInt(DiceRollKey);
-            PlayerPrefs.DeleteKey(DiceRollKey); PlayerPrefs.Save();
             if (stepsFromDice > 0) StartMoving(stepsFromDice);
             else { UpdateMovesValueUIText(0); UpdateButtonRollDiceVisibility(); }
         }
@@ -134,44 +127,82 @@ public class snake : MonoBehaviour
         }
     }
 
-    // Инициализация статуса паспорта из PlayerPrefs.
-    // Должна вызываться один раз при запуске/перезапуске скрипта.
     private static void InitializePassportStatus()
     {
-        // Если инициализация уже была в этой сессии (например, после перезагрузки скриптов,
-        // но без перезапуска Play Mode), то _sessionHasPassport уже содержит актуальное
-        // состояние для текущей сессии, не нужно его перезаписывать из PlayerPrefs,
-        // так как PlayerPrefs могли быть не обновлены, если паспорт получен только что.
-        // Этот флаг _sessionPassportStatusInitialized сбрасывается только при полном
-        // перезапуске Play Mode, когда статические переменные обнуляются.
-        if (_sessionPassportStatusInitialized)
-        {
-            return;
-        }
+        if (_sessionPassportStatusInitialized && Application.isPlaying) return;
 
-        _sessionHasPassport = (PlayerPrefs.GetInt(HasPassportKey, 0) == 1);
-        _sessionPassportStatusInitialized = true; // Помечаем, что инициализация прошла
-        Debug.Log($"InitializePassportStatus: Статус паспорта из PlayerPrefs: {_sessionHasPassport}. Ключ: {HasPassportKey}");
+        if (PlayerPrefs.HasKey(HasPassportKey))
+        {
+            _sessionHasPassport = (PlayerPrefs.GetInt(HasPassportKey, 0) == 1);
+            Debug.Log($"InitializePassportStatus: Статус паспорта из PlayerPrefs: {_sessionHasPassport}.");
+        }
+        else
+        {
+            _sessionHasPassport = false;
+            Debug.Log($"InitializePassportStatus: Ключ паспорта не найден. Статус: false.");
+        }
+        _sessionPassportStatusInitialized = true;
     }
 
-    // Метод для проверки, есть ли у игрока паспорт
     private bool PlayerEffectivelyHasPassport()
     {
-        // Всегда проверяем актуальное значение _sessionHasPassport,
-        // так как оно обновляется немедленно при получении паспорта.
-        // PlayerPrefs могут использоваться для восстановления между сессиями.
-        InitializePassportStatus(); // Убедимся, что инициализация была, на всякий случай
         return _sessionHasPassport;
+    }
+
+    void LoadMoney()
+    {
+        if (PlayerPrefs.HasKey(MoneyKey))
+        {
+            money = PlayerPrefs.GetInt(MoneyKey);
+            Debug.Log($"Деньги загружены из PlayerPrefs: {money}");
+        }
+        else
+        {
+            money = 5000;
+            Debug.Log($"Ключ денег не найден. Установлено начальное значение: {money}");
+        }
+        _previousMoneyForUI = -1;
+        UpdateMoneyUI();
+    }
+
+    void SaveMoney()
+    {
+        PlayerPrefs.SetInt(MoneyKey, money);
+        PlayerPrefs.Save();
+        Debug.Log($"Деньги СОХРАНЕНЫ в PlayerPrefs: {money}.");
+    }
+
+    void UpdateMoneyUI()
+    {
+        if (moneyText != null)
+        {
+            if (money != _previousMoneyForUI)
+            {
+                moneyText.text = $"Монеты: {money}";
+                _previousMoneyForUI = money;
+                Debug.Log($"UpdateMoneyUI: moneyText ОБНОВЛЕН (значение изменилось) на '{moneyText.text}'");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("UpdateMoneyUI: moneyText is NULL!");
+        }
     }
 
     void OnApplicationQuit()
     {
-        PlayerPrefs.DeleteKey(PosXKey); PlayerPrefs.DeleteKey(PosYKey); PlayerPrefs.DeleteKey(PosZKey); PlayerPrefs.DeleteKey(RotYKey);
-        // НЕ УДАЛЯЕМ HasPassportKey здесь, чтобы он сохранялся между сессиями игры
+        Debug.Log("OnApplicationQuit: Удаление PlayerPrefs перед выходом...");
+        PlayerPrefs.DeleteKey(PosXKey);
+        PlayerPrefs.DeleteKey(PosYKey);
+        PlayerPrefs.DeleteKey(PosZKey);
+        PlayerPrefs.DeleteKey(RotYKey);
+        PlayerPrefs.DeleteKey(DiceRollKey);
+        PlayerPrefs.DeleteKey(HasPassportKey);
+        PlayerPrefs.DeleteKey(MoneyKey);
         PlayerPrefs.Save();
+        Debug.Log("OnApplicationQuit: Все указанные PlayerPrefs удалены.");
     }
 
-    // ... (LoadPlayerState, SavePlayerState, StartMoving, MoveStepsCoroutine, OnMovementFinished, ForceStopMovementSequence - без изменений) ...
     void LoadPlayerState()
     {
         if (PlayerPrefs.HasKey(PosXKey))
@@ -179,7 +210,8 @@ public class snake : MonoBehaviour
             transform.position = new Vector3(PlayerPrefs.GetFloat(PosXKey), PlayerPrefs.GetFloat(PosYKey), PlayerPrefs.GetFloat(PosZKey));
             transform.rotation = Quaternion.Euler(0, PlayerPrefs.GetFloat(RotYKey, transform.rotation.eulerAngles.y), 0);
         }
-        if (!CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
+        bool stopFieldActive = CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true);
+        if (!stopFieldActive)
         {
             CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true);
         }
@@ -188,25 +220,39 @@ public class snake : MonoBehaviour
 
     public void SavePlayerState()
     {
-        PlayerPrefs.SetFloat(PosXKey, transform.position.x); PlayerPrefs.SetFloat(PosYKey, transform.position.y);
-        PlayerPrefs.SetFloat(PosZKey, transform.position.z); PlayerPrefs.SetFloat(RotYKey, transform.rotation.eulerAngles.y);
-        PlayerPrefs.Save();
+        PlayerPrefs.SetFloat(PosXKey, transform.position.x);
+        PlayerPrefs.SetFloat(PosYKey, transform.position.y);
+        PlayerPrefs.SetFloat(PosZKey, transform.position.z);
+        PlayerPrefs.SetFloat(RotYKey, transform.rotation.eulerAngles.y);
+        SaveMoney();
+        Debug.Log("PlayerState сохранен (позиция и деньги).");
     }
 
     public void StartMoving(int steps)
     {
-        if (isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive)
+        if (isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive || passportEventCurrentlyActive)
         {
-            Debug.LogWarning($"Snake: StartMoving called but character is busy or passport check active. Ignored.");
+            Debug.LogWarning($"Snake: StartMoving called but character is busy. Ignored.");
             return;
         }
         Debug.Log($"Snake: StartMoving initiated with {steps} steps.");
 
         stepsTakenInCurrentMove = 0;
-        startedMoveFromSpecialField = (passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove);
+        startedMoveFromSpecialField = (passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove || passportCheckEventActive);
         hasStoppedOnStopFieldThisMove = false;
+        _cinemaCheckedThisTurn = false; // Сбрасываем флаг проверки кино для нового хода
+
+        if (passportEventCurrentlyActive)
+        {
+            HidePassportUIPanel();
+        }
 
         currentDiceSteps = steps;
+        if (PlayerPrefs.HasKey(DiceRollKey))
+        {
+            PlayerPrefs.DeleteKey(DiceRollKey);
+            PlayerPrefs.Save();
+        }
         UpdateUIAndButton();
         if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
         primaryMoveCoroutine = StartCoroutine(MoveStepsCoroutine());
@@ -214,22 +260,33 @@ public class snake : MonoBehaviour
 
     IEnumerator MoveStepsCoroutine()
     {
-        if (isMovingOnLoop) { Debug.LogWarning("Snake: MoveStepsCoroutine called while isMovingOnLoop. Aborting."); yield break; }
+        if (isMovingOnLoop) { yield break; }
         isMoving = true;
         UpdateUIAndButton();
         bool skipSpecialFieldChecksDuringFirstSegment = startedMoveFromSpecialField;
 
-        while (currentDiceSteps > 0 && !waitingForTurnChoice && !isMovingOnLoop && !passportCheckEventActive)
+        while (currentDiceSteps > 0 && !waitingForTurnChoice && !isMovingOnLoop && !passportCheckEventActive && !passportEventCurrentlyActive)
         {
             Vector3 startPositionOfThisStep = transform.position;
             Vector3 endPositionThisStep = startPositionOfThisStep + transform.forward * stepDistance;
             float elapsedTime = 0;
-            Debug.Log($"Snake: MoveStepsCoroutine - Начинаем шаг {stepsTakenInCurrentMove + 1}. Пропускать проверки на первом сегменте: {skipSpecialFieldChecksDuringFirstSegment}. Текущая позиция: {transform.position.x}");
+            bool crossedCinemaXThisStep = false;
+            float initialXForStep = startPositionOfThisStep.x;
+
             while (elapsedTime < moveDuration)
             {
                 Vector3 posBeforeLerp = transform.position;
                 transform.position = Vector3.Lerp(startPositionOfThisStep, endPositionThisStep, elapsedTime / moveDuration);
                 elapsedTime += Time.deltaTime;
+
+                if (!crossedCinemaXThisStep)
+                {
+                    if (transform.forward.x > 0 && posBeforeLerp.x < cinemaFieldXCoordinate && transform.position.x >= cinemaFieldXCoordinate)
+                    { crossedCinemaXThisStep = true; Debug.Log($"MoveStepsCoroutine: Пересекли X={cinemaFieldXCoordinate} справа (X={transform.position.x})"); }
+                    else if (transform.forward.x < 0 && posBeforeLerp.x > cinemaFieldXCoordinate && transform.position.x <= cinemaFieldXCoordinate)
+                    { crossedCinemaXThisStep = true; Debug.Log($"MoveStepsCoroutine: Пересекли X={cinemaFieldXCoordinate} слева (X={transform.position.x})"); }
+                }
+
                 if (!skipSpecialFieldChecksDuringFirstSegment)
                 {
                     if (CheckAndHandleStopFieldIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем Стоп (в середине хода)"); yield break; }
@@ -240,10 +297,28 @@ public class snake : MonoBehaviour
             transform.position = endPositionThisStep;
             skipSpecialFieldChecksDuringFirstSegment = false;
             startedMoveFromSpecialField = false;
+
+            bool onCinemaTileAfterStep = false;
+            float finalXForStep = transform.position.x;
+            if ((initialXForStep <= cinemaFieldXCoordinate + cinemaFieldTolerance && finalXForStep >= cinemaFieldXCoordinate - cinemaFieldTolerance) ||
+                (initialXForStep >= cinemaFieldXCoordinate - cinemaFieldTolerance && finalXForStep <= cinemaFieldXCoordinate + cinemaFieldTolerance))
+            {
+                if (Mathf.Abs(finalXForStep - cinemaFieldXCoordinate) <= cinemaFieldTolerance)
+                {
+                    onCinemaTileAfterStep = true;
+                }
+            }
+
+            if (crossedCinemaXThisStep || onCinemaTileAfterStep)
+            {
+                Debug.Log($"MoveStepsCoroutine: Шаг завершен, crossedCinemaX={crossedCinemaXThisStep}, onCinemaTile={onCinemaTileAfterStep}. Проверка кино для X={transform.position.x}");
+                CheckForCinemaTile();
+            }
+
             currentDiceSteps--;
             stepsTakenInCurrentMove++;
             UpdateMovesValueUIText(currentDiceSteps);
-            Debug.Log($"Snake: MoveStepsCoroutine - Шаг {stepsTakenInCurrentMove} завершен. Осталось шагов: {currentDiceSteps}. Текущая позиция: {transform.position.x}");
+
             if (CheckAndHandleStopFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле Стоп (в конце шага)"); yield break; }
             if (CheckAndShowPassportPanelIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле 14 лет (в конце шага)"); yield break; }
         }
@@ -252,39 +327,42 @@ public class snake : MonoBehaviour
 
     void OnMovementFinished()
     {
+        Debug.Log($"OnMovementFinished CALLED. Player pos: {transform.position}. isMoving: {isMoving}, passportCheckActive: {passportCheckEventActive}, passportEventCurrentlyActive: {passportEventCurrentlyActive}");
         isMoving = false;
         isMovingOnLoop = false;
-        waitingForTurnChoice = false;
-        startedMoveFromSpecialField = false;
 
         if (passportCheckEventActive)
         {
-            UpdateButtonRollDiceVisibility();
-            SavePlayerState();
-            Debug.Log($"Snake: OnMovementFinished. Специальное событие (Проверка паспорта на поле СТОП) активно. Ожидание действия игрока.");
+            Debug.Log($"Snake: OnMovementFinished. Событие (Проверка паспорта на СТОП) активно. Ожидание.");
             return;
         }
         else if (passportEventCurrentlyActive)
         {
-            ShowPassportUIPanel();
-            UpdateButtonRollDiceVisibility();
-            SavePlayerState();
-            Debug.Log($"Snake: OnMovementFinished. Специальное событие (поле 14 лет) активно. Ожидание действия игрока (получить паспорт или бросить кубик).");
+            Debug.Log($"Snake: OnMovementFinished. Событие (поле 14 лет) активно. Ожидание.");
             return;
         }
 
         if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
         {
-            Debug.Log($"Snake: OnMovementFinished. Только что приземлились на поле СТОП. Проверка паспорта активирована.");
-            SavePlayerState();
+            Debug.Log($"Snake: OnMovementFinished. Только что остановились на поле СТОП.");
             return;
         }
         else if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
         {
-            Debug.Log($"Snake: OnMovementFinished. Только что приземлились на поле 14 лет. Панель получения паспорта активирована.");
-            SavePlayerState();
+            Debug.Log($"Snake: OnMovementFinished. Только что остановились на поле 14 лет.");
             return;
         }
+
+        if (!_cinemaCheckedThisTurn) // Проверяем кино в конце хода, только если оно не было проверено в середине
+        {
+            Debug.Log("OnMovementFinished: Кино не проверялось в середине хода, вызываем CheckForCinemaTile() сейчас.");
+            CheckForCinemaTile();
+        }
+        else
+        {
+            Debug.Log("OnMovementFinished: Кино уже было проверено/обработано в середине этого хода.");
+        }
+
 
         if (stepsTakenInCurrentMove == 2 && currentDiceSteps == 0)
         {
@@ -295,42 +373,91 @@ public class snake : MonoBehaviour
                 {
                     Debug.Log("Игрок остановился на поле вопроса после броска 2 - активация вопроса!");
                     SavePlayerState();
+                    PlayerPrefs.SetInt(DiceRollKey, 0);
+                    PlayerPrefs.Save();
                     SceneManager.LoadScene("Vopros");
                     return;
                 }
             }
         }
+
         UpdateUIAndButton();
         SavePlayerState();
-        Debug.Log($"Snake: OnMovementFinished. Все проверки пройдены, специальных полей не встречено. Готов к следующему ходу.");
+        Debug.Log($"Snake: OnMovementFinished. FINALIZED. Готов к следующему ходу.");
     }
 
+    void CheckForCinemaTile()
+    {
+        if (_cinemaCheckedThisTurn && currentDiceSteps > 0)
+        {
+            Debug.Log("CheckForCinemaTile: Уже проверяли кино на этом ходу (и это не конец хода), пропускаем.");
+            return;
+        }
+
+        Debug.Log("CheckForCinemaTile: Method ENTERED.");
+        Collider[] hitColliders = Physics.OverlapSphere(transform.position, 1.0f); // Радиус для обнаружения тега
+        Debug.Log($"CheckForCinemaTile: OverlapSphere found {hitColliders.Length} colliders at pos {transform.position}.");
+
+        bool cinemaFoundThisCheck = false;
+        foreach (var collider in hitColliders)
+        {
+            Debug.Log($"CheckForCinemaTile: Checking collider '{collider.gameObject.name}' with tag '{collider.tag}'");
+            if (collider.CompareTag(cinemaTileTag))
+            {
+                cinemaFoundThisCheck = true;
+                Debug.Log($"CheckForCinemaTile: TAG MATCH! Object: {collider.gameObject.name}.");
+                if (money >= cinemaVisitCost)
+                {
+                    money -= cinemaVisitCost;
+                    Debug.Log($"CheckForCinemaTile: Visited cinema! Deducted {cinemaVisitCost}. Remaining money: {money}");
+                }
+                else
+                {
+                    Debug.Log($"CheckForCinemaTile: Not enough money for cinema! Need {cinemaVisitCost}, have {money}");
+                }
+                UpdateMoneyUI();
+                SaveMoney();
+                break;
+            }
+        }
+
+        if (cinemaFoundThisCheck)
+        {
+            _cinemaCheckedThisTurn = true;
+        }
+        else
+        {
+            Debug.Log("CheckForCinemaTile: No cinema tile found or tag mismatch at current position.");
+        }
+    }
 
     void ForceStopMovementSequence(string reason)
     {
-        Debug.Log($"Snake: Принудительная остановка последовательности движения из-за: {reason}");
+        Debug.Log($"Snake: Принудительная остановка движения: {reason}");
         if (primaryMoveCoroutine != null) { StopCoroutine(primaryMoveCoroutine); primaryMoveCoroutine = null; }
         if (loopMoveCoroutine != null) { StopCoroutine(loopMoveCoroutine); loopMoveCoroutine = null; }
+
         isMoving = false;
         isMovingOnLoop = false;
-        waitingForTurnChoice = false;
         currentDiceSteps = 0;
+        startedMoveFromSpecialField = false;
+
         OnMovementFinished();
     }
-
 
     bool CheckAndShowPassportPanelIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheckAfterStop = false)
     {
         if (passportCheckEventActive) return false;
+        if (passportEventCurrentlyActive && !isFinalCheckAfterStop) return false;
 
-        bool passportEffectivelyObtained = PlayerEffectivelyHasPassport(); // Используем новый метод
-        Debug.Log($"CheckAndShowPassportPanelIfNeeded: Эффективный статус паспорта: {passportEffectivelyObtained}");
+        bool passportEffectivelyObtained = PlayerEffectivelyHasPassport();
 
         if (passportEffectivelyObtained)
         {
             if (passportEventCurrentlyActive) HidePassportUIPanel();
             return false;
         }
+
         if (passportUIPanel == null) return false;
 
         bool crossedXPassport = (prevPos.x < passportFieldXCoordinate && currentPos.x >= passportFieldXCoordinate) ||
@@ -339,18 +466,16 @@ public class snake : MonoBehaviour
 
         if ((isFinalCheckAfterStop && atXPassportCoordinate) || (!isFinalCheckAfterStop && (crossedXPassport || atXPassportCoordinate)))
         {
-            ShowPassportUIPanel();
-            Debug.Log($"Snake: Поле 14 лет обнаружено. Требуется остановка. isFinalCheck:{isFinalCheckAfterStop}, passportEventCurrentlyActive:{passportEventCurrentlyActive}. Эффективный статус паспорта: {passportEffectivelyObtained}");
+            if (!passportEventCurrentlyActive)
+            {
+                ShowPassportUIPanel();
+                Debug.Log($"Snake: Поле 14 лет обнаружено. Панель показана. isFinalCheck:{isFinalCheckAfterStop}.");
+            }
             return true;
         }
-        else
-        {
-            if (passportEventCurrentlyActive) HidePassportUIPanel();
-            return false;
-        }
+        return false;
     }
 
-    // ... (ShowPassportUIPanel, HidePassportUIPanel - без изменений) ...
     void ShowPassportUIPanel()
     {
         if (passportUIPanel != null)
@@ -365,7 +490,7 @@ public class snake : MonoBehaviour
 
     void HidePassportUIPanel()
     {
-        if (passportUIPanel != null)
+        if (passportUIPanel != null && passportEventCurrentlyActive)
         {
             passportUIPanel.SetActive(false);
             if (getPassportButtonObject != null) getPassportButtonObject.SetActive(false);
@@ -379,25 +504,18 @@ public class snake : MonoBehaviour
     {
         Debug.Log("Кнопка 'Получить паспорт' нажата!");
         PlayerPrefs.SetInt(HasPassportKey, 1);
-        PlayerPrefs.Save(); // Сохраняем немедленно
-        _sessionHasPassport = true; // Обновляем флаг сессии
-        // _sessionPassportStatusInitialized остается true, т.к. сессия та же
-        Debug.Log($"Статус паспорта после установки: PlayerPrefs: {(PlayerPrefs.GetInt(HasPassportKey, 0) == 1)}, SessionFlag: {_sessionHasPassport}");
+        _sessionHasPassport = true;
 
-        if (passportObject != null)
-        {
-            passportObject.SetActive(true);  // показываем паспорт
-        }
+        if (passportObject != null) passportObject.SetActive(true);
+
         HidePassportUIPanel();
         OnMovementFinished();
     }
 
-
-    // ... (CheckAndHandleStopFieldIfNeeded, ShowPassportCheckPanel, HidePassportCheckPanel - без изменений) ...
     bool CheckAndHandleStopFieldIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheck = false)
     {
-        if (passportCheckEventActive) return true;
         if (passportEventCurrentlyActive && !isFinalCheck) return false;
+        if (passportCheckEventActive && !isFinalCheck) return false;
 
         bool crossedXStop = (prevPos.x < stopFieldXCoordinate && currentPos.x >= stopFieldXCoordinate) ||
                             (prevPos.x > stopFieldXCoordinate && currentPos.x <= stopFieldXCoordinate);
@@ -406,25 +524,20 @@ public class snake : MonoBehaviour
         if ((isFinalCheck && atXStopCoordinate) || (!isFinalCheck && (crossedXStop || atXStopCoordinate)))
         {
             if (hasStoppedOnStopFieldThisMove && !isFinalCheck) return true;
-            Debug.Log($"Snake: Поле СТОП обнаружено. isFinal:{isFinalCheck}, crossed:{crossedXStop}, atX:{atXStopCoordinate}, hasStoppedOnStopFieldThisMove:{hasStoppedOnStopFieldThisMove}");
+
+            Debug.Log($"Snake: Поле СТОП обнаружено. isFinal:{isFinalCheck}, atX:{atXStopCoordinate}");
             transform.position = new Vector3(stopFieldXCoordinate, currentPos.y, currentPos.z);
             hasStoppedOnStopFieldThisMove = true;
-            ShowPassportCheckPanel();
+
+            if (!passportCheckEventActive) ShowPassportCheckPanel();
             return true;
         }
-        else
-        {
-            if (passportCheckEventActive && Mathf.Abs(currentPos.x - stopFieldXCoordinate) >= stopFieldTolerance)
-            {
-                HidePassportCheckPanel();
-            }
-            return false;
-        }
+        return false;
     }
 
     void ShowPassportCheckPanel()
     {
-        if (passportCheckPanel != null && !passportCheckEventActive)
+        if (passportCheckPanel != null)
         {
             passportCheckPanel.SetActive(true);
             if (presentPassportButton != null) presentPassportButton.gameObject.SetActive(true);
@@ -436,47 +549,44 @@ public class snake : MonoBehaviour
 
     void HidePassportCheckPanel()
     {
-        if (passportCheckPanel != null)
+        if (passportCheckPanel != null && passportCheckEventActive)
         {
             passportCheckPanel.SetActive(false);
             if (presentPassportButton != null) presentPassportButton.gameObject.SetActive(false);
             passportCheckEventActive = false;
+            hasStoppedOnStopFieldThisMove = false;
             UpdateButtonRollDiceVisibility();
             Debug.Log("Панель проверки паспорта (поле СТОП) скрыта.");
         }
     }
 
-
     public void OnPresentPassportButtonClicked()
     {
         Debug.Log("Кнопка 'Предъявить документ' нажата!");
-        HidePassportCheckPanel();
 
-        bool effectivelyHasPassport = PlayerEffectivelyHasPassport(); // Используем новый метод
-
-        Debug.Log($"Эффективный статус паспорта при предъявлении: {effectivelyHasPassport}");
-
+        bool effectivelyHasPassport = PlayerEffectivelyHasPassport();
         if (effectivelyHasPassport)
         {
-            Debug.Log("Проверка паспорта: УСПЕХ! Паспорт есть (эффективный).");
+            Debug.Log("Проверка паспорта: УСПЕХ!");
             if (passportSuccessPanel != null) passportSuccessPanel.SetActive(true);
             StartCoroutine(HidePanelAfterDelay(passportSuccessPanel, 1.5f, () => {
+                HidePassportCheckPanel();
                 OnMovementFinished();
             }));
         }
         else
         {
-            Debug.Log("Проверка паспорта: ПРОВАЛ! Паспорта нет (эффективный).");
+            Debug.Log("Проверка паспорта: ПРОВАЛ!");
             if (passportFailPanel != null) passportFailPanel.SetActive(true);
             StartCoroutine(HidePanelAfterDelay(passportFailPanel, 2f, () => {
                 StartCoroutine(MovePlayerBackThreeFieldsCoroutine(() => {
+                    HidePassportCheckPanel();
                     OnMovementFinished();
                 }));
             }));
         }
     }
 
-    // ... (MovePlayerBackThreeFieldsCoroutine, HidePanelAfterDelay, ReachedTurnPoint, HandleTurnChoice, MoveAlongLoopCoroutine, RotateCoroutine, RotateTowardsTargetCoroutine, RotateTowardsTargetDuringMovement, UpdateUIAndButton, UpdateMovesValueUIText, UpdateButtonRollDiceVisibility, IsCurrentlyExecutingMovement, OnTriggerEnter - БЕЗ ИЗМЕНЕНИЙ) ...
     IEnumerator MovePlayerBackThreeFieldsCoroutine(System.Action onComplete)
     {
         Debug.Log("Перемещаем игрока на 3 поля назад...");
@@ -486,7 +596,7 @@ public class snake : MonoBehaviour
 
         float elapsedTime = 0;
         Vector3 startPos = transform.position;
-        float totalMoveDuration = moveDuration * 3;
+        float totalMoveDuration = moveDuration * 1.5f;
         bool tempStartedMoveFromSpecialField = startedMoveFromSpecialField;
         startedMoveFromSpecialField = true;
 
@@ -502,35 +612,37 @@ public class snake : MonoBehaviour
         isMoving = false;
         onComplete?.Invoke();
     }
+
     IEnumerator HidePanelAfterDelay(GameObject panel, float delay, System.Action onComplete = null)
     {
         yield return new WaitForSeconds(delay);
         if (panel != null) panel.SetActive(false);
         onComplete?.Invoke();
     }
+
     public void ReachedTurnPoint()
     {
-        Debug.Log($"ReachedTurnPoint ВЫЗВАН. waitChoice: {waitingForTurnChoice}, isMoving: {isMoving}, onLoop: {isMovingOnLoop}, passportActive (14yo): {passportEventCurrentlyActive}, passportCheckActive (Stop): {passportCheckEventActive}");
-        if (waitingForTurnChoice) { Debug.Log("ReachedTurnPoint: Возврат, так как уже ждем выбора."); return; }
+        Debug.Log($"ReachedTurnPoint ВЫЗВАН. waitChoice: {waitingForTurnChoice}, isMoving: {isMoving}, passportActive: {passportEventCurrentlyActive}, passportCheck: {passportCheckEventActive}");
+        if (waitingForTurnChoice) return;
         if (passportEventCurrentlyActive || passportCheckEventActive)
         {
-            Debug.Log("ReachedTurnPoint: Возврат, так как активна панель специального события. Игрок должен сначала решить ее.");
+            Debug.Log("ReachedTurnPoint: Активна панель спец. события, выбор пути отложен.");
             return;
         }
-        Debug.Log("ReachedTurnPoint: Обработка точки поворота. Остановка текущего движения, если есть.");
-        if (primaryMoveCoroutine != null) { StopCoroutine(primaryMoveCoroutine); primaryMoveCoroutine = null; }
-        if (loopMoveCoroutine != null) { StopCoroutine(loopMoveCoroutine); loopMoveCoroutine = null; }
+
+        if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
+        if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
         isMoving = false; isMovingOnLoop = false;
 
         waitingForTurnChoice = true;
         stepsRemainingAfterTurn = currentDiceSteps;
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(true); else Debug.LogWarning("ReachedTurnPoint: turnChoiceUI не назначен!");
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
         UpdateUIAndButton();
     }
 
     public void HandleTurnChoice(bool turnLeft)
     {
-        if (!waitingForTurnChoice) { Debug.LogWarning("HandleTurnChoice: Не ждем выбора."); return; }
+        if (!waitingForTurnChoice) return;
         if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
         waitingForTurnChoice = false;
         currentDiceSteps = stepsRemainingAfterTurn;
@@ -547,19 +659,19 @@ public class snake : MonoBehaviour
         {
             if (currentDiceSteps >= loopCost)
             {
-                isMovingOnLoop = true; UpdateUIAndButton();
+                isMovingOnLoop = true;
                 if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
                 loopMoveCoroutine = StartCoroutine(MoveAlongLoopCoroutine(targetLoopWaypoints, loopCost));
             }
             else
             {
-                Debug.Log($"HandleTurnChoice: Недостаточно шагов для петли ({currentDiceSteps}/{loopCost}). Завершение хода.");
+                currentDiceSteps = 0;
                 OnMovementFinished();
             }
         }
         else
         {
-            isMoving = true; UpdateUIAndButton();
+            isMoving = true;
             float rotationYAmount = turnLeft ? -90f : 90f;
             if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
             primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () => {
@@ -568,6 +680,7 @@ public class snake : MonoBehaviour
                     startedMoveFromSpecialField = false;
                     if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true)) { OnMovementFinished(); return; }
                     if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true)) { OnMovementFinished(); return; }
+
                     StartMoving(currentDiceSteps);
                 }
                 else
@@ -576,18 +689,24 @@ public class snake : MonoBehaviour
                 }
             }));
         }
+        UpdateUIAndButton();
     }
+
     IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop)
     {
         isMovingOnLoop = true; isMoving = true; UpdateUIAndButton();
         if (waypoints.Length > 0) yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[0].position));
         bool skipSpecialFieldChecksDuringFirstSegment = startedMoveFromSpecialField;
+        bool localCinemaCheckedThisLoop = false; // Локальный флаг для петли
 
         for (int i = 0; i < waypoints.Length; i++)
         {
             Vector3 startPositionOfThisStep = transform.position;
             Vector3 endPositionThisStep = waypoints[i].position;
             float elapsedTime = 0;
+            bool crossedCinemaXThisSegment = false;
+            float initialXForSegment = startPositionOfThisStep.x;
+
 
             while (elapsedTime < loopMoveDurationPerWaypoint)
             {
@@ -596,6 +715,15 @@ public class snake : MonoBehaviour
                 if (i + 1 < waypoints.Length) RotateTowardsTargetDuringMovement(waypoints[i + 1].position);
                 else RotateTowardsTargetDuringMovement(endPositionThisStep + waypoints[i].forward);
                 elapsedTime += Time.deltaTime;
+
+                if (!crossedCinemaXThisSegment && !_cinemaCheckedThisTurn) // Проверяем пересечение кино, если еще не было на этом ходу
+                {
+                    if (transform.forward.x > 0 && posBeforeLerp.x < cinemaFieldXCoordinate && transform.position.x >= cinemaFieldXCoordinate)
+                    { crossedCinemaXThisSegment = true; Debug.Log($"MoveAlongLoop: Пересекли X={cinemaFieldXCoordinate} справа (X={transform.position.x})"); }
+                    else if (transform.forward.x < 0 && posBeforeLerp.x > cinemaFieldXCoordinate && transform.position.x <= cinemaFieldXCoordinate)
+                    { crossedCinemaXThisSegment = true; Debug.Log($"MoveAlongLoop: Пересекли X={cinemaFieldXCoordinate} слева (X={transform.position.x})"); }
+                }
+
                 if (!skipSpecialFieldChecksDuringFirstSegment)
                 {
                     if (CheckAndHandleStopFieldIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем СТОП (середина петли)"); yield break; }
@@ -606,9 +734,30 @@ public class snake : MonoBehaviour
             transform.position = endPositionThisStep;
             skipSpecialFieldChecksDuringFirstSegment = false;
             startedMoveFromSpecialField = false;
+
+            bool onCinemaTileAfterSegment = false;
+            float finalXForSegment = transform.position.x;
+            if ((initialXForSegment <= cinemaFieldXCoordinate + cinemaFieldTolerance && finalXForSegment >= cinemaFieldXCoordinate - cinemaFieldTolerance) ||
+                (initialXForSegment >= cinemaFieldXCoordinate - cinemaFieldTolerance && finalXForSegment <= cinemaFieldXCoordinate + cinemaFieldTolerance))
+            {
+                if (Mathf.Abs(finalXForSegment - cinemaFieldXCoordinate) <= cinemaFieldTolerance)
+                {
+                    onCinemaTileAfterSegment = true;
+                }
+            }
+
+            if ((crossedCinemaXThisSegment || onCinemaTileAfterSegment) && !_cinemaCheckedThisTurn)
+            {
+                Debug.Log($"MoveAlongLoop: Сегмент завершен, crossedCinemaX={crossedCinemaXThisSegment}, onCinemaTile={onCinemaTileAfterSegment}. Проверка кино для X={transform.position.x}");
+                CheckForCinemaTile();
+                if (_cinemaCheckedThisTurn) localCinemaCheckedThisLoop = true; // Отмечаем, если кино было найдено на этом ходу
+            }
+
+
             if (CheckAndHandleStopFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле СТОП (конец точки пути петли)"); yield break; }
             if (CheckAndShowPassportPanelIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле паспорта 14 лет (конец точки пути петли)"); yield break; }
         }
+
         currentDiceSteps -= costOfLoop; UpdateMovesValueUIText(currentDiceSteps);
         if (waypoints.Length > 0) transform.rotation = waypoints[waypoints.Length - 1].rotation;
 
@@ -619,8 +768,9 @@ public class snake : MonoBehaviour
         if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true)) { OnMovementFinished(); yield break; }
 
         if (currentDiceSteps > 0) { StartMoving(currentDiceSteps); }
-        else OnMovementFinished();
+        else OnMovementFinished(); // Если это был конец хода, OnMovementFinished вызовет CheckForCinemaTile если нужно
     }
+
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
     {
         Quaternion startRot = transform.rotation;
@@ -652,47 +802,35 @@ public class snake : MonoBehaviour
     {
         UpdateMovesValueUIText(currentDiceSteps);
         UpdateButtonRollDiceVisibility();
+        UpdateMoneyUI();
     }
+
     void UpdateMovesValueUIText(int moves) { if (movesValueText != null) movesValueText.text = moves.ToString(); }
 
     void UpdateButtonRollDiceVisibility()
     {
         if (buttonRollDice != null)
         {
-            bool canRoll = !(isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive) && currentDiceSteps <= 0;
+            bool canRoll = !(isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive || passportEventCurrentlyActive) && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
-            Debug.Log($"UpdateButtonRollDiceVisibility: isMoving:{isMoving}, waiting:{waitingForTurnChoice}, onLoop:{isMovingOnLoop}, passportCheckActive:{passportCheckEventActive}, currentDiceSteps:{currentDiceSteps}. CanRoll: {canRoll}");
         }
     }
 
     public bool IsCurrentlyExecutingMovement()
     {
-        return isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive;
+        return isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive || passportEventCurrentlyActive;
     }
 
     void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"OnTriggerEnter с {other.name}. Шаги: {stepsTakenInCurrentMove}, isMoving: {isMoving}, DiceSteps: {currentDiceSteps}");
         if (other.CompareTag("TurnPointTrigger"))
         {
-            if (isMoving || isMovingOnLoop)
+            if ((isMoving || isMovingOnLoop) && !waitingForTurnChoice && !passportEventCurrentlyActive && !passportCheckEventActive)
             {
                 ReachedTurnPoint();
             }
             return;
         }
-        if (other.TryGetComponent<Vopros>(out _))
-        {
-            Debug.Log("Обнаружено поле Vopros через OnTriggerEnter.");
-            if ((!isMoving || currentDiceSteps == 1) && stepsTakenInCurrentMove == 1)
-            {
-                Debug.Log("Условия для вопроса выполнены (через OnTriggerEnter) - активация вопроса!");
-                SavePlayerState();
-                SceneManager.LoadScene("Vopros");
-                return;
-            }
-            return;
-        }
+        // Логика Vopros перенесена в OnMovementFinished
     }
-
 }

@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Age14Cell
   - TurnPointTrigger
+  - CinemaTile
   layers:
   - Default
   - TransparentFX
