@@ -974,7 +974,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rotationAmount: -45
-  player: {fileID: 0}
+  player: {fileID: 1432333428}
 --- !u!114 &56894192
 MonoBehaviour:
   m_ObjectHideFlags: 0
