@@ -44,6 +44,7 @@ public class snake : MonoBehaviour
     public GameObject passportSuccessPanel;
     public GameObject passportFailPanel;
     public GameObject passportObject;
+    public int passportFineAmount = 300;
 
     [Header("Настройки Кинотеатра")]
     public string cinemaTileTag = "CinemaTile"; // Тег для клетки "Кино"
@@ -339,16 +340,13 @@ public class snake : MonoBehaviour
         UpdateUIAndButton();
     }
 
-    // <<< ИСПРАВЛЕНО: Метод переписан для надежной работы по координатам
     void CheckForCinemaTile()
     {
-        // Если уже списали деньги на этом ходу, выходим.
         if (_cinemaCheckedThisTurn)
         {
             return;
         }
 
-        // Проверяем, находится ли игрок на клетке "Кино" по координате X
         if (Mathf.Abs(transform.position.x - cinemaFieldXCoordinate) <= cinemaFieldTolerance)
         {
             Debug.Log($"Обнаружена клетка 'Кино' на координате X={transform.position.x}. Списываем деньги.");
@@ -357,8 +355,8 @@ public class snake : MonoBehaviour
                 money -= cinemaVisitCost;
             }
 
-            _cinemaCheckedThisTurn = true; // Отмечаем, что на этом ходу кино посетили
-            UpdateMoneyUI(); // Обновляем UI
+            _cinemaCheckedThisTurn = true;
+            UpdateMoneyUI();
         }
     }
 
@@ -492,7 +490,7 @@ public class snake : MonoBehaviour
             StartCoroutine(HidePanelAfterDelay(passportFailPanel, 2f, () => {
                 StartCoroutine(MovePlayerBackThreeFieldsCoroutine(() => {
                     HidePassportCheckPanel();
-                    OnMovementFinished();
+                    ShowPassportUIPanel();
                 }));
             }));
         }
@@ -514,6 +512,11 @@ public class snake : MonoBehaviour
         }
         transform.position = targetPosition;
         isMoving = false;
+
+        Debug.Log($"Штраф! Списано {passportFineAmount} доков за несвоевременное получение паспорта.");
+        money -= passportFineAmount;
+        UpdateMoneyUI();
+
         onComplete?.Invoke();
     }
 
@@ -590,7 +593,6 @@ public class snake : MonoBehaviour
         UpdateUIAndButton();
     }
 
-    // <<< ИСПРАВЛЕНО: Этот метод теперь тоже проверяет все специальные поля, включая кино.
     IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop)
     {
         isMovingOnLoop = true; isMoving = true; UpdateUIAndButton();
@@ -674,6 +676,8 @@ public class snake : MonoBehaviour
     {
         if (buttonRollDice != null)
         {
+            // <<< ИСПРАВЛЕНО: Убрано условие '|| passportEventCurrentlyActive', которое я по ошибке вернул.
+            // Теперь кнопка "Кинь кубик" будет снова видна, когда активна панель получения паспорта.
             bool canRoll = !(isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive) && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
         }
@@ -683,6 +687,8 @@ public class snake : MonoBehaviour
     {
         return isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive || passportEventCurrentlyActive;
     }
+
+
 
     void OnTriggerEnter(Collider other)
     {
