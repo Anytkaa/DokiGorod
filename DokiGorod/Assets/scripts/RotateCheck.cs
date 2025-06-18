@@ -36,7 +36,7 @@ public class RotateCheck : MonoBehaviour
                 visualConfirmationRenderer.material.color = triggerEnterColor;
             }
             // ИСПРАВЛЕНИЕ ЗДЕСЬ: убираем аргумент '0'
-            playerSnake.ReachedTurnPoint();
+            playerSnake.ReachedTurnPoint(this);
         }
         else
         {

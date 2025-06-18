@@ -4,6 +4,17 @@ using UnityEngine;
 using UnityEngine.UI; // Для стандартного UI Text
 using UnityEngine.SceneManagement;
 
+[System.Serializable] // Это нужно, чтобы видеть его в Инспекторе
+public class TurnPointInfo
+{
+    public string description = "Описание для удобства"; // Просто чтобы не запутаться в инспекторе
+    public RotateCheck triggerObject; // Ссылка на сам объект-триггер развилки
+    public Transform[] leftWaypoints;
+    public int leftPathCost = 1;
+    public Transform[] rightWaypoints;
+    public int rightPathCost = 1;
+}
+
 public class snake : MonoBehaviour
 {
     [Header("Объекты и UI")]
@@ -23,11 +34,11 @@ public class snake : MonoBehaviour
     public Button turnLeftButton;
     public Button turnRightButton;
 
-    [Header("Настройки Боковых Путей (Петель)")]
-    public Transform[] leftLoopWaypoints;
-    public int leftLoopCost = 3;
-    public Transform[] rightLoopWaypoints;
-    public int rightLoopCost = 3;
+    [Header("Настройки Развилок")]
+    public List<TurnPointInfo> turnPoints = new List<TurnPointInfo>();
+
+    // Добавим переменную для хранения текущего триггера
+    private RotateCheck currentTurnTrigger;
 
     [Header("Специальные Поля и UI Событий")]
     public float passportFieldXCoordinate = 80.0f;
@@ -236,20 +247,25 @@ public class snake : MonoBehaviour
         Debug.Log($"СОСТОЯНИЕ СОХРАНЕНО (ВНУТРИ СЕССИИ). Позиция: {transform.position}");
     }
 
-    public void StartMoving(int steps)
+    // ПОЛНОСТЬЮ ЗАМЕНИТЕ ВАШУ ФУНКЦИЮ STARTMOVING
+    public void StartMoving(int steps, bool isContinuationOfEvent = false)
     {
-        if (isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive)
+        // --- ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА И ОЧИСТКА СОСТОЯНИЯ ---
+
+        if (isMoving || waitingForTurnChoice || isMovingOnLoop)
         {
-             Debug.Log("StartMoving блокирован: " +
-                $"isMoving={isMoving}, waitingForTurnChoice={waitingForTurnChoice}, isMovingOnLoop={isMovingOnLoop}, passportCheckEventActive={passportCheckEventActive}");
+            Debug.Log("StartMoving блокирован активным процессом.");
             return;
         }
 
-        //hasAlreadyPresentedPassportOnThisStopField = false;
-        stepsTakenInCurrentMove = 0;
-        //hasAlreadyPresentedPassportOnThisStopField = false; // сброс на новый ход
-        startedMoveFromSpecialField = (passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove || passportCheckEventActive);
+        // Определяем, начинаем ли мы ход, стоя на ОДНОМ ИЗ специальных полей
+        bool isStartingFromStopField = Mathf.Abs(transform.position.x - stopFieldXCoordinate) < stopFieldTolerance;
+        // ↓↓↓ ВОТ КЛЮЧЕВОЕ ДОБАВЛЕНИЕ ↓↓↓
+        bool isStartingFromPassportField = Mathf.Abs(transform.position.x - passportFieldXCoordinate) < passportFieldTolerance;
+
+        // Сбрасываем все флаги состояния для НОВОГО хода.
         hasStoppedOnStopFieldThisMove = false;
+        hasAlreadyPresentedPassportOnThisStopField = false;
         _cinemaCheckedThisTurn = false;
 
         if (passportEventCurrentlyActive)
@@ -257,11 +273,20 @@ public class snake : MonoBehaviour
             HidePassportUIPanel();
         }
 
-        currentDiceSteps = steps;
-        if (PlayerPrefs.HasKey(DiceRollKey))
+        if (passportCheckEventActive)
         {
-            PlayerPrefs.DeleteKey(DiceRollKey);
+            HidePassportCheckPanel();
+            passportCheckEventActive = false;
         }
+
+        // Устанавливаем флаг, который позволит "уехать" с поля без повторного срабатывания
+        startedMoveFromSpecialField = isStartingFromStopField || isStartingFromPassportField || isContinuationOfEvent;
+
+        // --- НАЧАЛО ДВИЖЕНИЯ ---
+
+        currentDiceSteps = steps;
+        if (PlayerPrefs.HasKey(DiceRollKey)) PlayerPrefs.DeleteKey(DiceRollKey);
+
         UpdateUIAndButton();
         if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
         primaryMoveCoroutine = StartCoroutine(MoveStepsCoroutine());
@@ -496,65 +521,89 @@ public class snake : MonoBehaviour
 
     void HidePassportCheckPanel()
     {
-        if (passportCheckPanel != null && passportCheckEventActive)
+        if (passportCheckPanel != null)
         {
             passportCheckPanel.SetActive(false);
 
             if (presentPassportButton != null)
                 presentPassportButton.gameObject.SetActive(false);
+        }
+    }
 
-            
-            passportCheckEventActive = false;
-            hasStoppedOnStopFieldThisMove = false;
-            UpdateButtonRollDiceVisibility();
+    private void HideAllPassportCheckUI()
+    {
+        // Эта функция скрывает ВСЁ, что относится к проверке паспорта.
+        if (passportCheckPanel != null)
+        {
+            passportCheckPanel.SetActive(false);
+        }
+        if (presentPassportButton != null)
+        {
+            presentPassportButton.gameObject.SetActive(false);
         }
     }
 
     public void OnPresentPassportButtonClicked()
     {
+        // --- ВЕТКА 1: У ИГРОКА ЕСТЬ ПАСПОРТ (УСПЕХ) ---
         if (PlayerEffectivelyHasPassport())
         {
-            if (passportSuccessPanel != null)
-                passportSuccessPanel.SetActive(true);
+            // === НЕМЕДЛЕННЫЕ ДЕЙСТВИЯ ===
 
+            // 1. НЕМЕДЛЕННО вызываем нашего "чистильщика". Он скроет и панель, и кнопку.
+            HideAllPassportCheckUI();
+
+            // 2. Показываем сообщение об успехе.
+            if (passportSuccessPanel != null)
+            {
+                passportSuccessPanel.SetActive(true);
+            }
+
+            // === ОТЛОЖЕННЫЕ ДЕЙСТВИЯ ===
             StartCoroutine(HidePanelAfterDelay(passportSuccessPanel, 1.5f, () =>
             {
-                // Сохраняем оставшиеся шаги перед сбросом флагов
                 int remainingSteps = currentDiceSteps;
 
-                // Полный сброс всех флагов, связанных с остановкой
-                isMoving = false; // ✅ <-- вот это добавлено
-                hasStoppedOnStopFieldThisMove = false;
+                // Сбрасываем флаг события, чтобы игра знала, что мы больше не в нем.
                 passportCheckEventActive = false;
-                startedMoveFromSpecialField = false;
 
-                // ✅ Флаг что паспорт предъявлен и поле стоп уже обработано
+                // Устанавливаем флаг "памяти", чтобы не остановиться на этом поле снова в рамках этого же хода.
                 hasAlreadyPresentedPassportOnThisStopField = true;
-                HidePassportCheckPanel();
 
-                // 🔽 Скрываем панель с сообщением "Предъявите паспорт"
-                if (hasPassportPanel != null)
-                    hasPassportPanel.SetActive(false); // <== ДОБАВЬ ЭТО
-
-                if (passportUIPanel != null)
-                    passportUIPanel.SetActive(false);
-
+                // Обновляем UI на случай, если ходов не осталось и нужно показать кнопку "Кинь кубик".
                 UpdateUIAndButton();
 
-                // Продолжить движение после предъявления паспорта
-                StartMoving(remainingSteps);
-                
+                // Если были шаги, продолжаем движение с флагом "продолжение".
+                if (remainingSteps > 0)
+                {
+                    StartMoving(remainingSteps, true);
+                }
             }));
         }
-        else
+        else // Ветка, если паспорта НЕТ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
         {
             if (passportFailPanel != null)
                 passportFailPanel.SetActive(true);
-                
+
             StartCoroutine(HidePanelAfterDelay(passportFailPanel, 2f, () => {
                 StartCoroutine(MovePlayerBackThreeFieldsCoroutine(() => {
+
+                    // --- ПРАВИЛЬНЫЙ ПОРЯДОК СБРОСА И АКТИВАЦИИ ---
+
+                    // 1. Сначала скрываем UI стоп-поля.
                     HidePassportCheckPanel();
+
+                    // 2. ЯВНО и ПРИНУДИТЕЛЬНО сбрасываем флаг состояния "Проверка паспорта".
+                    // Это самая важная строка, которой не хватало.
+                    passportCheckEventActive = false;
+
+                    // 3. Теперь, когда система в чистом состоянии, активируем логику получения паспорта.
                     ShowPassportUIPanel();
+
+                    // 4. Обновляем UI, чтобы кнопка "Кинь кубик" исчезла,
+                    // так как теперь активно событие получения паспорта.
+                    UpdateButtonRollDiceVisibility();
+
                 }));
             }));
         }
@@ -594,7 +643,7 @@ public class snake : MonoBehaviour
         onComplete?.Invoke();
     }
 
-    public void ReachedTurnPoint()
+    public void ReachedTurnPoint(RotateCheck trigger)
     {
         if (waitingForTurnChoice) return;
         if (passportEventCurrentlyActive || passportCheckEventActive) return;
@@ -604,6 +653,7 @@ public class snake : MonoBehaviour
         isMoving = false; isMovingOnLoop = false;
 
         waitingForTurnChoice = true;
+        currentTurnTrigger = trigger; // <-- ЗАПОМИНАЕМ, КАКАЯ РАЗВИЛКА АКТИВНА
         stepsRemainingAfterTurn = currentDiceSteps;
         if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
         UpdateUIAndButton();
@@ -611,18 +661,28 @@ public class snake : MonoBehaviour
 
     public void HandleTurnChoice(bool turnLeft)
     {
-        if (!waitingForTurnChoice) return;
+        if (!waitingForTurnChoice || currentTurnTrigger == null) return;
+
+        // Ищем в нашем списке нужную информацию по активному триггеру
+        TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
+
+        if (currentPoint == null)
+        {
+            Debug.LogError("Не удалось найти настройки для текущей развилки! Проверьте инспектор.");
+            // Отменяем ожидание, чтобы не застрять
+            waitingForTurnChoice = false;
+            if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
+            OnMovementFinished();
+            return;
+        }
+
         if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
         waitingForTurnChoice = false;
         currentDiceSteps = stepsRemainingAfterTurn;
 
-        startedMoveFromSpecialField = false;
-        HidePassportUIPanel();
-        hasStoppedOnStopFieldThisMove = false;
-        HidePassportCheckPanel();
-
-        Transform[] targetLoopWaypoints = turnLeft ? leftLoopWaypoints : rightLoopWaypoints;
-        int loopCost = turnLeft ? leftLoopCost : rightLoopCost;
+        // Используем данные из найденной развилки
+        Transform[] targetLoopWaypoints = turnLeft ? currentPoint.leftWaypoints : currentPoint.rightWaypoints;
+        int loopCost = turnLeft ? currentPoint.leftPathCost : currentPoint.rightPathCost;
 
         if (targetLoopWaypoints != null && targetLoopWaypoints.Length > 0)
         {
@@ -638,7 +698,7 @@ public class snake : MonoBehaviour
                 OnMovementFinished();
             }
         }
-        else
+        else // Если для этой развилки пути не заданы, делаем простой поворот
         {
             isMoving = true;
             float rotationYAmount = turnLeft ? -90f : 90f;
@@ -646,9 +706,6 @@ public class snake : MonoBehaviour
             primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () => {
                 if (currentDiceSteps > 0)
                 {
-                    startedMoveFromSpecialField = false;
-                    if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true)) { OnMovementFinished(); return; }
-                    if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true)) { OnMovementFinished(); return; }
                     StartMoving(currentDiceSteps);
                 }
                 else
@@ -743,8 +800,7 @@ public class snake : MonoBehaviour
     {
         if (buttonRollDice != null)
         {
-            // <<< ИСПРАВЛЕНО: Убрано условие '|| passportEventCurrentlyActive', которое я по ошибке вернул.
-            // Теперь кнопка "Кинь кубик" будет снова видна, когда активна панель получения паспорта.
+
             bool canRoll = !(isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive) && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
         }
@@ -757,15 +813,5 @@ public class snake : MonoBehaviour
 
 
 
-    void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("TurnPointTrigger"))
-        {
-            if ((isMoving || isMovingOnLoop) && !waitingForTurnChoice && !passportEventCurrentlyActive && !passportCheckEventActive)
-            {
-                ReachedTurnPoint();
-            }
-            return;
-        }
-    }
+    
 }
