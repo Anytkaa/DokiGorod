@@ -33,6 +33,8 @@ public class snake : MonoBehaviour
     public GameObject turnChoiceUI;
     public Button turnLeftButton;
     public Button turnRightButton;
+    public GameObject turnMessagePanel; // Новая панель с сообщением
+    public Text turnMessageText; // Текст сообщения
 
     [Header("Настройки Развилок")]
     public List<TurnPointInfo> turnPoints = new List<TurnPointInfo>();
@@ -655,13 +657,58 @@ public class snake : MonoBehaviour
         waitingForTurnChoice = true;
         currentTurnTrigger = trigger; // <-- ЗАПОМИНАЕМ, КАКАЯ РАЗВИЛКА АКТИВНА
         stepsRemainingAfterTurn = currentDiceSteps;
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
+
+
+        // Показываем сообщение перед развилкой --> тут добавила 
+        if (turnMessagePanel != null)
+        {
+            turnMessagePanel.SetActive(true);
+            
+            // Установите текст сообщения (можно настроить в инспекторе или динамически)
+            if (turnMessageText != null)
+            {
+                turnMessageText.text = "Выберите направление:";
+            }
+            
+            // Запускаем корутину, которая через пару секунд покажет кнопки
+            StartCoroutine(ShowTurnButtonsAfterDelay(2f));
+        }
+        else
+        {
+            // Если панели сообщения нет, сразу показываем кнопки
+            if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
+        }
+
+
         UpdateUIAndButton();
+    }
+    
+    IEnumerator ShowTurnButtonsAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        
+        // Скрываем панель сообщения
+        if (turnMessagePanel != null)
+        {
+            turnMessagePanel.SetActive(false);
+        }
+        
+        // Показываем кнопки выбора направления
+        if (turnChoiceUI != null)
+        {
+            turnChoiceUI.SetActive(true);
+        }
     }
 
     public void HandleTurnChoice(bool turnLeft)
     {
         if (!waitingForTurnChoice || currentTurnTrigger == null) return;
+
+        // Скрываем панель сообщения (если вдруг еще видна) --тут тоже добавила 
+        if (turnMessagePanel != null)
+        {
+            turnMessagePanel.SetActive(false);
+        }
 
         // Ищем в нашем списке нужную информацию по активному триггеру
         TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
@@ -703,7 +750,8 @@ public class snake : MonoBehaviour
             isMoving = true;
             float rotationYAmount = turnLeft ? -90f : 90f;
             if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
-            primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () => {
+            primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () =>
+            {
                 if (currentDiceSteps > 0)
                 {
                     StartMoving(currentDiceSteps);
