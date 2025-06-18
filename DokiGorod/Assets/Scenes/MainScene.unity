@@ -24018,6 +24018,7 @@ MonoBehaviour:
   cinemaVisitCost: 50
   cinemaFieldXCoordinate: 43
   cinemaFieldTolerance: 1.5
+  hasPassportPanel: {fileID: 1247985639}
 --- !u!136 &1432333430
 CapsuleCollider:
   m_ObjectHideFlags: 0

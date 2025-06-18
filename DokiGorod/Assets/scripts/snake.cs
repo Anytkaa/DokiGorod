@@ -68,6 +68,8 @@ public class snake : MonoBehaviour
     private bool passportCheckEventActive = false;
     private bool hasStoppedOnStopFieldThisMove = false;
     private bool startedMoveFromSpecialField = false;
+    private bool hasAlreadyPresentedPassportOnThisStopField = false;
+
 
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
     private const string PosYKey = "PlayerPositionY_Snake_DokiGorod";
@@ -82,6 +84,8 @@ public class snake : MonoBehaviour
     private static bool _sessionPassportStatusInitialized = false;
 
     private static bool _isFirstLaunch = true;
+
+    [SerializeField] private GameObject hasPassportPanel; // 🟢 ДОБАВЬ ЭТУ СТРОКУ
 
     void Awake()
     {
@@ -132,6 +136,8 @@ public class snake : MonoBehaviour
             presentPassportButton.onClick.RemoveAllListeners();
             presentPassportButton.onClick.AddListener(OnPresentPassportButtonClicked);
         }
+
+        if (hasPassportPanel != null) hasPassportPanel.SetActive(false);
     }
 
     void OnApplicationQuit()
@@ -234,10 +240,14 @@ public class snake : MonoBehaviour
     {
         if (isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive)
         {
+             Debug.Log("StartMoving блокирован: " +
+                $"isMoving={isMoving}, waitingForTurnChoice={waitingForTurnChoice}, isMovingOnLoop={isMovingOnLoop}, passportCheckEventActive={passportCheckEventActive}");
             return;
         }
 
+        //hasAlreadyPresentedPassportOnThisStopField = false;
         stepsTakenInCurrentMove = 0;
+        //hasAlreadyPresentedPassportOnThisStopField = false; // сброс на новый ход
         startedMoveFromSpecialField = (passportEventCurrentlyActive || hasStoppedOnStopFieldThisMove || passportCheckEventActive);
         hasStoppedOnStopFieldThisMove = false;
         _cinemaCheckedThisTurn = false;
@@ -305,6 +315,12 @@ public class snake : MonoBehaviour
         isMovingOnLoop = false;
         SavePlayerState();
 
+        // Если было стоп-поле, но паспорт проверен - сбрасываем флаг
+        if (hasStoppedOnStopFieldThisMove && !passportCheckEventActive)
+        {
+            hasStoppedOnStopFieldThisMove = false;
+        }
+
         if (passportCheckEventActive || passportEventCurrentlyActive)
         {
             UpdateUIAndButton();
@@ -367,7 +383,12 @@ public class snake : MonoBehaviour
 
         isMoving = false;
         isMovingOnLoop = false;
-        currentDiceSteps = 0;
+
+        if (!hasStoppedOnStopFieldThisMove)
+        {
+            currentDiceSteps = 0;
+        }
+
         startedMoveFromSpecialField = false;
 
         OnMovementFinished();
@@ -426,6 +447,8 @@ public class snake : MonoBehaviour
     public void OnGetPassportButtonClicked()
     {
         _sessionHasPassport = true;
+         PlayerPrefs.SetInt(HasPassportKey, 1); // Сохраняем в PlayerPrefs
+        PlayerPrefs.Save();
         if (passportObject != null) passportObject.SetActive(true);
         HidePassportUIPanel();
         OnMovementFinished();
@@ -433,8 +456,14 @@ public class snake : MonoBehaviour
 
     bool CheckAndHandleStopFieldIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheck = false)
     {
-        if (passportEventCurrentlyActive && !isFinalCheck) return false;
-        if (passportCheckEventActive && !isFinalCheck) return false;
+        if (passportEventCurrentlyActive && !isFinalCheck)
+            return false;
+        if (passportCheckEventActive && !isFinalCheck)
+            return false;
+
+        // ✅ НЕ проверять, если уже предъявили паспорт ранее
+        if (hasAlreadyPresentedPassportOnThisStopField)
+            return false;
 
         bool crossedXStop = (prevPos.x < stopFieldXCoordinate && currentPos.x >= stopFieldXCoordinate) ||
                             (prevPos.x > stopFieldXCoordinate && currentPos.x <= stopFieldXCoordinate);
@@ -442,11 +471,14 @@ public class snake : MonoBehaviour
 
         if ((isFinalCheck && atXStopCoordinate) || (!isFinalCheck && (crossedXStop || atXStopCoordinate)))
         {
-            if (hasStoppedOnStopFieldThisMove && !isFinalCheck) return true;
-            transform.position = new Vector3(stopFieldXCoordinate, currentPos.y, currentPos.z);
-            hasStoppedOnStopFieldThisMove = true;
-            if (!passportCheckEventActive) ShowPassportCheckPanel();
-            return true;
+            if (!hasStoppedOnStopFieldThisMove)
+            {
+                transform.position = new Vector3(stopFieldXCoordinate, currentPos.y, currentPos.z);
+                hasStoppedOnStopFieldThisMove = true;
+                if (!passportCheckEventActive) ShowPassportCheckPanel();
+                return true;
+            }
+            
         }
         return false;
     }
@@ -467,7 +499,11 @@ public class snake : MonoBehaviour
         if (passportCheckPanel != null && passportCheckEventActive)
         {
             passportCheckPanel.SetActive(false);
-            if (presentPassportButton != null) presentPassportButton.gameObject.SetActive(false);
+
+            if (presentPassportButton != null)
+                presentPassportButton.gameObject.SetActive(false);
+
+            
             passportCheckEventActive = false;
             hasStoppedOnStopFieldThisMove = false;
             UpdateButtonRollDiceVisibility();
@@ -478,15 +514,43 @@ public class snake : MonoBehaviour
     {
         if (PlayerEffectivelyHasPassport())
         {
-            if (passportSuccessPanel != null) passportSuccessPanel.SetActive(true);
-            StartCoroutine(HidePanelAfterDelay(passportSuccessPanel, 1.5f, () => {
+            if (passportSuccessPanel != null)
+                passportSuccessPanel.SetActive(true);
+
+            StartCoroutine(HidePanelAfterDelay(passportSuccessPanel, 1.5f, () =>
+            {
+                // Сохраняем оставшиеся шаги перед сбросом флагов
+                int remainingSteps = currentDiceSteps;
+
+                // Полный сброс всех флагов, связанных с остановкой
+                isMoving = false; // ✅ <-- вот это добавлено
+                hasStoppedOnStopFieldThisMove = false;
+                passportCheckEventActive = false;
+                startedMoveFromSpecialField = false;
+
+                // ✅ Флаг что паспорт предъявлен и поле стоп уже обработано
+                hasAlreadyPresentedPassportOnThisStopField = true;
                 HidePassportCheckPanel();
-                OnMovementFinished();
+
+                // 🔽 Скрываем панель с сообщением "Предъявите паспорт"
+                if (hasPassportPanel != null)
+                    hasPassportPanel.SetActive(false); // <== ДОБАВЬ ЭТО
+
+                if (passportUIPanel != null)
+                    passportUIPanel.SetActive(false);
+
+                UpdateUIAndButton();
+
+                // Продолжить движение после предъявления паспорта
+                StartMoving(remainingSteps);
+                
             }));
         }
         else
         {
-            if (passportFailPanel != null) passportFailPanel.SetActive(true);
+            if (passportFailPanel != null)
+                passportFailPanel.SetActive(true);
+                
             StartCoroutine(HidePanelAfterDelay(passportFailPanel, 2f, () => {
                 StartCoroutine(MovePlayerBackThreeFieldsCoroutine(() => {
                     HidePassportCheckPanel();
@@ -524,6 +588,9 @@ public class snake : MonoBehaviour
     {
         yield return new WaitForSeconds(delay);
         if (panel != null) panel.SetActive(false);
+
+        UpdateUIAndButton(); // <== Добавьте эту строку
+
         onComplete?.Invoke();
     }
 
