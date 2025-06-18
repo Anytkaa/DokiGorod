@@ -13,6 +13,10 @@ public class TurnPointInfo
     public int leftPathCost = 1;
     public Transform[] rightWaypoints;
     public int rightPathCost = 1;
+    [TextArea] public string turnMessage; // Новое поле для сообщения на развилке
+    // Новые поля для текста кнопок
+    public string leftButtonText = "Налево";
+    public string rightButtonText = "Направо";
 }
 
 public class snake : MonoBehaviour
@@ -34,7 +38,7 @@ public class snake : MonoBehaviour
     public Button turnLeftButton;
     public Button turnRightButton;
     public GameObject turnMessagePanel; // Новая панель с сообщением
-    public Text turnMessageText; // Текст сообщения
+    public TMPro.TextMeshProUGUI turnMessageText; // Текст сообщения
 
     [Header("Настройки Развилок")]
     public List<TurnPointInfo> turnPoints = new List<TurnPointInfo>();
@@ -657,19 +661,29 @@ public class snake : MonoBehaviour
         waitingForTurnChoice = true;
         currentTurnTrigger = trigger; // <-- ЗАПОМИНАЕМ, КАКАЯ РАЗВИЛКА АКТИВНА
         stepsRemainingAfterTurn = currentDiceSteps;
+        
+        // Находим информацию о текущей развилке
+        TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
 
 
         // Показываем сообщение перед развилкой --> тут добавила 
         if (turnMessagePanel != null)
         {
             turnMessagePanel.SetActive(true);
-            
+
             // Установите текст сообщения (можно настроить в инспекторе или динамически)
             if (turnMessageText != null)
             {
-                turnMessageText.text = "Выберите направление:";
+                if (currentPoint != null && !string.IsNullOrEmpty(currentPoint.turnMessage))
+                {
+                    turnMessageText.text = currentPoint.turnMessage;
+                }
+                else
+                {
+                    turnMessageText.text = "Выберите направление:";
+                }
             }
-            
+
             // Запускаем корутину, которая через пару секунд покажет кнопки
             StartCoroutine(ShowTurnButtonsAfterDelay(2f));
         }

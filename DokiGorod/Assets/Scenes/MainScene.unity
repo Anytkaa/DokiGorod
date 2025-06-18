@@ -180,8 +180,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "X\u043E\u0447\u0435\u0448\u044C \u043F\u043E\u0439\u0442\u0438 \u0432
-    \u043A\u0438\u043D\u043E?"
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -22143,6 +22142,111 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1415786151}
   m_CullTransparentMesh: 1
+--- !u!1 &1419536049
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1419536053}
+  - component: {fileID: 1419536052}
+  - component: {fileID: 1419536051}
+  - component: {fileID: 1419536050}
+  m_Layer: 0
+  m_Name: DriveLi
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!65 &1419536050
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419536049}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1419536051
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419536049}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 76463ef9d1e124cb392f027dbc127c6b, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1419536052
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419536049}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1419536053
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1419536049}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0.7071068, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 1.72, y: 10.73, z: 225.59}
+  m_LocalScale: {x: 0, y: 3, z: 3}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 90, z: 0}
 --- !u!1001 &1421956152
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -22407,7 +22511,7 @@ MonoBehaviour:
   turnLeftButton: {fileID: 1007281102}
   turnRightButton: {fileID: 1186235392}
   turnMessagePanel: {fileID: 2068849478}
-  turnMessageText: {fileID: 0}
+  turnMessageText: {fileID: 3051223}
   turnPoints:
   - description: "\u043A\u0438\u043D\u043E"
     triggerObject: {fileID: 765360320}
@@ -22420,6 +22524,10 @@ MonoBehaviour:
     - {fileID: 233457832}
     - {fileID: 1273843310}
     rightPathCost: 1
+    turnMessage: "\u0445\u043E\u0447\u0435\u0448\u044C \u043F\u043E\u0439\u0442\u0438
+      \u0432 \u043A\u0438\u043D\u043E\u0442\u0435\u0430\u0442\u0440?"
+    leftButtonText: 
+    rightButtonText: 
   - description: "2 \u0440\u0430\u0437\u0432\u0438\u043B\u043A\u0430"
     triggerObject: {fileID: 711258522}
     leftWaypoints:
@@ -22434,6 +22542,11 @@ MonoBehaviour:
     - {fileID: 613244667}
     - {fileID: 1076978550}
     rightPathCost: 1
+    turnMessage: "\u0445\u043E\u0447\u0435\u0448\u044C \u043F\u0440\u043E\u0439\u0442\u0438
+      \u043E\u0431\u0443\u0447\u0435\u043D\u0438\u0435 \u043D\u0430 \u0432\u043E\u0434\u0438\u0442\u0435\u043B\u044C\u0441\u043A\u0438\u0435
+      \u043F\u0440\u0430\u0432\u0430?"
+    leftButtonText: "\u041D\u0430\u043B\u0435\u0432\u043E"
+    rightButtonText: "\u041D\u0430\u043F\u0440\u0430\u0432\u043E"
   - description: "\u0432\u0443\u0437/\u0440\u0430\u0431\u043E\u0442\u0430"
     triggerObject: {fileID: 455470665}
     leftWaypoints:
@@ -22452,6 +22565,11 @@ MonoBehaviour:
     - {fileID: 668615856}
     - {fileID: 479058121}
     rightPathCost: 0
+    turnMessage: "\u0445\u043E\u0447\u0435\u0448\u044C \u043F\u043E\u0439\u0442\u0438
+      \u0443\u0447\u0438\u0442\u044C\u0441\u044F \u0432 \u0443\u043D\u0438\u0432\u0435\u0440\u0441\u0438\u0442\u0435\u0442
+      \u0438\u043B\u0438 \u0440\u0430\u0431\u043E\u0442\u0430\u0442\u044C?"
+    leftButtonText: "\u041D\u0430\u043B\u0435\u0432\u043E"
+    rightButtonText: "\u041D\u0430\u043F\u0440\u0430\u0432\u043E"
   passportFieldXCoordinate: 80
   passportFieldTolerance: 0.5
   passportUIPanel: {fileID: 300095273}
@@ -32622,3 +32740,4 @@ SceneRoots:
   - {fileID: 1721217199}
   - {fileID: 2146782491}
   - {fileID: 1712740762}
+  - {fileID: 1419536053}
