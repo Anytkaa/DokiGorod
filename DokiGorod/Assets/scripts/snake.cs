@@ -665,6 +665,19 @@ public class snake : MonoBehaviour
         // Находим информацию о текущей развилке
         TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
 
+        if (currentPoint != null)
+        {
+            // 🟢 Устанавливаем уникальные подписи на кнопки
+            if (turnLeftButton != null && turnLeftButton.GetComponentInChildren<TMPro.TextMeshProUGUI>() != null)
+            {
+                turnLeftButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = currentPoint.leftButtonText;
+            }
+            if (turnRightButton != null && turnRightButton.GetComponentInChildren<TMPro.TextMeshProUGUI>() != null)
+            {
+                turnRightButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = currentPoint.rightButtonText;
+            }
+        }
+
 
         // Показываем сообщение перед развилкой --> тут добавила 
         if (turnMessagePanel != null)
