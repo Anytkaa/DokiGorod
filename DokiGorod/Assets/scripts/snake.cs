@@ -1,20 +1,19 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI; // Для стандартного UI Text
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-[System.Serializable] // Это нужно, чтобы видеть его в Инспекторе
+[System.Serializable]
 public class TurnPointInfo
 {
-    public string description = "Описание для удобства"; // Просто чтобы не запутаться в инспекторе
-    public RotateCheck triggerObject; // Ссылка на сам объект-триггер развилки
+    public string description = "Описание для удобства";
+    public RotateCheck triggerObject;
     public Transform[] leftWaypoints;
     public int leftPathCost = 1;
     public Transform[] rightWaypoints;
     public int rightPathCost = 1;
-    [TextArea] public string turnMessage; // Новое поле для сообщения на развилке
-    // Новые поля для текста кнопок
+    [TextArea] public string turnMessage;
     public string leftButtonText = "Налево";
     public string rightButtonText = "Направо";
 }
@@ -24,7 +23,7 @@ public class snake : MonoBehaviour
     [Header("Объекты и UI")]
     public GameObject buttonRollDice;
     public Text movesValueText;
-    public Text moneyText; // или public TextMeshProUGUI moneyText;
+    public Text moneyText;
 
     [Header("Настройки Движения")]
     public float stepDistance = 10.0f;
@@ -37,14 +36,21 @@ public class snake : MonoBehaviour
     public GameObject turnChoiceUI;
     public Button turnLeftButton;
     public Button turnRightButton;
-    public GameObject turnMessagePanel; // Новая панель с сообщением
-    public TMPro.TextMeshProUGUI turnMessageText; // Текст сообщения
+    public GameObject turnMessagePanel;
+    public TMPro.TextMeshProUGUI turnMessageText;
 
     [Header("Настройки Развилок")]
     public List<TurnPointInfo> turnPoints = new List<TurnPointInfo>();
-
-    // Добавим переменную для хранения текущего триггера
     private RotateCheck currentTurnTrigger;
+
+    // Переменные для сохранения состояния развилки между ходами
+    private Transform[] currentForkWaypoints;
+    private int currentForkCost;
+    private Quaternion currentForkInitialRotation;
+    private int currentForkIndex;
+    private bool isForkActive;
+    private bool shouldReturnToInitialRotation;
+    private bool needsTurnToLastWaypoint;
 
     [Header("Специальные Поля и UI Событий")]
     public float passportFieldXCoordinate = 80.0f;
@@ -79,19 +85,18 @@ public class snake : MonoBehaviour
     private bool wentRightAtSecondFork = false;
 
     [Header("Настройки Бонусной Клетки")]
-    public float bonusFieldXCoordinate = 60.0f; // Пример координаты X для бонусной клетки
-    public float bonusFieldTolerance = 1.5f;     // Допуск для проверки
-    public GameObject bonusUIPanel;              // Панель для сообщения о бонусе
-    public TMPro.TextMeshProUGUI bonusMessageText; // Текст сообщения
-    public int bonusAmount = 50;                 // Количество доков за бонус
+    public float bonusFieldXCoordinate = 60.0f;
+    public float bonusFieldTolerance = 1.5f;
+    public GameObject bonusUIPanel;
+    public TMPro.TextMeshProUGUI bonusMessageText;
+    public int bonusAmount = 50;
     private bool _bonusCheckedThisTurn = false;
 
-
     [Header("Настройки Кинотеатра")]
-    public string cinemaTileTag = "CinemaTile"; // Тег для клетки "Кино"
-    public int cinemaVisitCost = 50;      // Стоимость посещения кино
-    public float cinemaFieldXCoordinate = 43.21f; // X координата центра клетки кино
-    public float cinemaFieldTolerance = 1.5f;  // Допуск (половина ширины клетки + немного)
+    public string cinemaTileTag = "CinemaTile";
+    public int cinemaVisitCost = 50;
+    public float cinemaFieldXCoordinate = 43.21f;
+    public float cinemaFieldTolerance = 1.5f;
 
     public static int money = 5000;
     private int _previousMoneyForUI = -1;
@@ -110,8 +115,7 @@ public class snake : MonoBehaviour
     private bool hasStoppedOnStopFieldThisMove = false;
     private bool startedMoveFromSpecialField = false;
     private bool hasAlreadyPresentedPassportOnThisStopField = false;
-    private bool _bonusAppliedThisTurn = false; // Добавьте в раздел с приватными переменными
-
+    private bool _bonusAppliedThisTurn = false;
 
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
     private const string PosYKey = "PlayerPositionY_Snake_DokiGorod";
@@ -124,10 +128,9 @@ public class snake : MonoBehaviour
     private int stepsTakenInCurrentMove = 0;
     private static bool _sessionHasPassport = false;
     private static bool _sessionPassportStatusInitialized = false;
-
     private static bool _isFirstLaunch = true;
 
-    [SerializeField] private GameObject hasPassportPanel; // 🟢 ДОБАВЬ ЭТУ СТРОКУ
+    [SerializeField] private GameObject hasPassportPanel;
     [SerializeField] private GameObject graduationCertificateObject;
 
     void Awake()
@@ -145,6 +148,10 @@ public class snake : MonoBehaviour
     void Start()
     {
         gameObject.name = "Player_Snake";
+
+        shouldReturnToInitialRotation = false;
+        needsTurnToLastWaypoint = false;
+
         LoadPlayerState();
 
         if (PlayerPrefs.HasKey(DiceRollKey))
@@ -279,43 +286,69 @@ public class snake : MonoBehaviour
         Debug.Log($"СОСТОЯНИЕ СОХРАНЕНО (ВНУТРИ СЕССИИ). Позиция: {transform.position}");
     }
 
-    // ПОЛНОСТЬЮ ЗАМЕНИТЕ ВАШУ ФУНКЦИЮ STARTMOVING
     public void StartMoving(int steps, bool isContinuationOfEvent = false)
     {
-        _bonusAppliedThisTurn = false; // Сбрасываем при новом ходе
-        // --- ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА И ОЧИСТКА СОСТОЯНИЯ ---
+        // Проверяем, нужно ли продолжить движение по активной развилке
+        if (isForkActive && currentForkIndex < currentForkWaypoints.Length)
+        {
+            _bonusAppliedThisTurn = false;
+            if (isMoving || waitingForTurnChoice || isMovingOnLoop)
+            {
+                Debug.Log("StartMoving блокирован активным процессом.");
+                return;
+            }
 
+            // Подготовка переменных для внутреннего блока
+            bool isStartingFromStopFieldInner = Mathf.Abs(transform.position.x - stopFieldXCoordinate) < stopFieldTolerance;
+            bool isStartingFromPassportFieldInner = Mathf.Abs(transform.position.x - passportFieldXCoordinate) < passportFieldTolerance;
+
+            hasStoppedOnStopFieldThisMove = false;
+            hasAlreadyPresentedPassportOnThisStopField = false;
+            _cinemaCheckedThisTurn = false;
+
+            if (passportEventCurrentlyActive) HidePassportUIPanel();
+            if (passportCheckEventActive)
+            {
+                HidePassportCheckPanel();
+                passportCheckEventActive = false;
+            }
+
+            startedMoveFromSpecialField = isStartingFromStopFieldInner || isStartingFromPassportFieldInner || isContinuationOfEvent;
+
+            currentDiceSteps = steps;
+            if (PlayerPrefs.HasKey(DiceRollKey)) PlayerPrefs.DeleteKey(DiceRollKey);
+
+            // Продолжаем движение по развилке
+            isMovingOnLoop = true;
+            UpdateUIAndButton();
+            if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
+            loopMoveCoroutine = StartCoroutine(ContinueForkMovement());
+            return;
+        }
+
+        // Оригинальный код StartMoving
+        _bonusAppliedThisTurn = false;
         if (isMoving || waitingForTurnChoice || isMovingOnLoop)
         {
             Debug.Log("StartMoving блокирован активным процессом.");
             return;
         }
 
-        // Определяем, начинаем ли мы ход, стоя на ОДНОМ ИЗ специальных полей
         bool isStartingFromStopField = Mathf.Abs(transform.position.x - stopFieldXCoordinate) < stopFieldTolerance;
-        // ↓↓↓ ВОТ КЛЮЧЕВОЕ ДОБАВЛЕНИЕ ↓↓↓
         bool isStartingFromPassportField = Mathf.Abs(transform.position.x - passportFieldXCoordinate) < passportFieldTolerance;
 
-        // Сбрасываем все флаги состояния для НОВОГО хода.
         hasStoppedOnStopFieldThisMove = false;
         hasAlreadyPresentedPassportOnThisStopField = false;
         _cinemaCheckedThisTurn = false;
 
-        if (passportEventCurrentlyActive)
-        {
-            HidePassportUIPanel();
-        }
-
+        if (passportEventCurrentlyActive) HidePassportUIPanel();
         if (passportCheckEventActive)
         {
             HidePassportCheckPanel();
             passportCheckEventActive = false;
         }
 
-        // Устанавливаем флаг, который позволит "уехать" с поля без повторного срабатывания
         startedMoveFromSpecialField = isStartingFromStopField || isStartingFromPassportField || isContinuationOfEvent;
-
-        // --- НАЧАЛО ДВИЖЕНИЯ ---
 
         currentDiceSteps = steps;
         if (PlayerPrefs.HasKey(DiceRollKey)) PlayerPrefs.DeleteKey(DiceRollKey);
@@ -348,7 +381,7 @@ public class snake : MonoBehaviour
                 {
                     if (CheckAndHandleStopFieldIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем Стоп (в середине хода)"); yield break; }
                     if (CheckAndShowPassportPanelIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем 14 лет (в середине хода)"); yield break; }
-                    if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { /* Обработка бонуса */ }
+                    if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { }
                 }
                 yield return null;
             }
@@ -364,7 +397,7 @@ public class snake : MonoBehaviour
 
             if (CheckAndHandleStopFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле Стоп (в конце шага)"); yield break; }
             if (CheckAndShowPassportPanelIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле 14 лет (в конце шага)"); yield break; }
-            if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { /* Обработка бонуса */ }
+            if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { }
         }
         ForceStopMovementSequence("Движение завершено нормально или по решению.");
     }
@@ -375,14 +408,12 @@ public class snake : MonoBehaviour
         isMovingOnLoop = false;
         SavePlayerState();
 
-        // Если было стоп-поле, но паспорт проверен - сбрасываем флаг
         if (hasStoppedOnStopFieldThisMove && !passportCheckEventActive)
         {
             hasStoppedOnStopFieldThisMove = false;
         }
 
-        // Проверка бонусной клетки (добавлено)
-        if (!_bonusCheckedThisTurn && currentDiceSteps == 0 && 
+        if (!_bonusCheckedThisTurn && currentDiceSteps == 0 &&
             Mathf.Abs(transform.position.x - bonusFieldXCoordinate) < bonusFieldTolerance)
         {
             GiveBonus();
@@ -446,8 +477,22 @@ public class snake : MonoBehaviour
 
     void ForceStopMovementSequence(string reason)
     {
-        if (primaryMoveCoroutine != null) { StopCoroutine(primaryMoveCoroutine); primaryMoveCoroutine = null; }
-        if (loopMoveCoroutine != null) { StopCoroutine(loopMoveCoroutine); loopMoveCoroutine = null; }
+        if (primaryMoveCoroutine != null)
+        {
+            StopCoroutine(primaryMoveCoroutine);
+            primaryMoveCoroutine = null;
+        }
+        if (loopMoveCoroutine != null)
+        {
+            StopCoroutine(loopMoveCoroutine);
+            loopMoveCoroutine = null;
+        }
+
+        // Сбрасываем состояние развилки только если остановка не вызвана нехваткой шагов на развилке
+        if (!(isForkActive && currentDiceSteps <= 0))
+        {
+            ResetForkState();
+        }
 
         isMoving = false;
         isMovingOnLoop = false;
@@ -566,7 +611,7 @@ public class snake : MonoBehaviour
     public void OnGetPassportButtonClicked()
     {
         _sessionHasPassport = true;
-         PlayerPrefs.SetInt(HasPassportKey, 1); // Сохраняем в PlayerPrefs
+        PlayerPrefs.SetInt(HasPassportKey, 1);
         PlayerPrefs.Save();
         if (passportObject != null) passportObject.SetActive(true);
         HidePassportUIPanel();
@@ -580,7 +625,6 @@ public class snake : MonoBehaviour
         if (passportCheckEventActive && !isFinalCheck)
             return false;
 
-        // ✅ НЕ проверять, если уже предъявили паспорт ранее
         if (hasAlreadyPresentedPassportOnThisStopField)
             return false;
 
@@ -597,7 +641,6 @@ public class snake : MonoBehaviour
                 if (!passportCheckEventActive) ShowPassportCheckPanel();
                 return true;
             }
-            
         }
         return false;
     }
@@ -626,7 +669,6 @@ public class snake : MonoBehaviour
 
     private void HideAllPassportCheckUI()
     {
-        // Эта функция скрывает ВСЁ, что относится к проверке паспорта.
         if (passportCheckPanel != null)
         {
             passportCheckPanel.SetActive(false);
@@ -639,65 +681,39 @@ public class snake : MonoBehaviour
 
     public void OnPresentPassportButtonClicked()
     {
-        // --- ВЕТКА 1: У ИГРОКА ЕСТЬ ПАСПОРТ (УСПЕХ) ---
         if (PlayerEffectivelyHasPassport())
         {
-            // === НЕМЕДЛЕННЫЕ ДЕЙСТВИЯ ===
-
-            // 1. НЕМЕДЛЕННО вызываем нашего "чистильщика". Он скроет и панель, и кнопку.
             HideAllPassportCheckUI();
 
-            // 2. Показываем сообщение об успехе.
             if (passportSuccessPanel != null)
             {
                 passportSuccessPanel.SetActive(true);
             }
 
-            // === ОТЛОЖЕННЫЕ ДЕЙСТВИЯ ===
             StartCoroutine(HidePanelAfterDelay(passportSuccessPanel, 1.5f, () =>
             {
                 int remainingSteps = currentDiceSteps;
-
-                // Сбрасываем флаг события, чтобы игра знала, что мы больше не в нем.
                 passportCheckEventActive = false;
-
-                // Устанавливаем флаг "памяти", чтобы не остановиться на этом поле снова в рамках этого же хода.
                 hasAlreadyPresentedPassportOnThisStopField = true;
-
-                // Обновляем UI на случай, если ходов не осталось и нужно показать кнопку "Кинь кубик".
                 UpdateUIAndButton();
 
-                // Если были шаги, продолжаем движение с флагом "продолжение".
                 if (remainingSteps > 0)
                 {
                     StartMoving(remainingSteps, true);
                 }
             }));
         }
-        else // Ветка, если паспорта НЕТ (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+        else
         {
             if (passportFailPanel != null)
                 passportFailPanel.SetActive(true);
 
             StartCoroutine(HidePanelAfterDelay(passportFailPanel, 2f, () => {
                 StartCoroutine(MovePlayerBackThreeFieldsCoroutine(() => {
-
-                    // --- ПРАВИЛЬНЫЙ ПОРЯДОК СБРОСА И АКТИВАЦИИ ---
-
-                    // 1. Сначала скрываем UI стоп-поля.
                     HidePassportCheckPanel();
-
-                    // 2. ЯВНО и ПРИНУДИТЕЛЬНО сбрасываем флаг состояния "Проверка паспорта".
-                    // Это самая важная строка, которой не хватало.
                     passportCheckEventActive = false;
-
-                    // 3. Теперь, когда система в чистом состоянии, активируем логику получения паспорта.
                     ShowPassportUIPanel();
-
-                    // 4. Обновляем UI, чтобы кнопка "Кинь кубик" исчезла,
-                    // так как теперь активно событие получения паспорта.
                     UpdateButtonRollDiceVisibility();
-
                 }));
             }));
         }
@@ -732,7 +748,7 @@ public class snake : MonoBehaviour
         yield return new WaitForSeconds(delay);
         if (panel != null) panel.SetActive(false);
 
-        UpdateUIAndButton(); // <== Добавьте эту строку
+        UpdateUIAndButton();
 
         onComplete?.Invoke();
     }
@@ -747,15 +763,13 @@ public class snake : MonoBehaviour
         isMoving = false; isMovingOnLoop = false;
 
         waitingForTurnChoice = true;
-        currentTurnTrigger = trigger; // <-- ЗАПОМИНАЕМ, КАКАЯ РАЗВИЛКА АКТИВНА
+        currentTurnTrigger = trigger;
         stepsRemainingAfterTurn = currentDiceSteps;
-        
-        // Находим информацию о текущей развилке
+
         TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
 
         if (currentPoint != null)
         {
-            // 🟢 Устанавливаем уникальные подписи на кнопки
             if (turnLeftButton != null && turnLeftButton.GetComponentInChildren<TMPro.TextMeshProUGUI>() != null)
             {
                 turnLeftButton.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = currentPoint.leftButtonText;
@@ -766,13 +780,10 @@ public class snake : MonoBehaviour
             }
         }
 
-
-        // Показываем сообщение перед развилкой --> тут добавила 
         if (turnMessagePanel != null)
         {
             turnMessagePanel.SetActive(true);
 
-            // Установите текст сообщения (можно настроить в инспекторе или динамически)
             if (turnMessageText != null)
             {
                 if (currentPoint != null && !string.IsNullOrEmpty(currentPoint.turnMessage))
@@ -785,30 +796,25 @@ public class snake : MonoBehaviour
                 }
             }
 
-            // Запускаем корутину, которая через пару секунд покажет кнопки
             StartCoroutine(ShowTurnButtonsAfterDelay(2f));
         }
         else
         {
-            // Если панели сообщения нет, сразу показываем кнопки
             if (turnChoiceUI != null) turnChoiceUI.SetActive(true);
         }
 
-
         UpdateUIAndButton();
     }
-    
+
     IEnumerator ShowTurnButtonsAfterDelay(float delay)
     {
         yield return new WaitForSeconds(delay);
-        
-        // Скрываем панель сообщения
+
         if (turnMessagePanel != null)
         {
             turnMessagePanel.SetActive(false);
         }
-        
-        // Показываем кнопки выбора направления
+
         if (turnChoiceUI != null)
         {
             turnChoiceUI.SetActive(true);
@@ -819,19 +825,16 @@ public class snake : MonoBehaviour
     {
         if (!waitingForTurnChoice || currentTurnTrigger == null) return;
 
-        // Скрываем панель сообщения (если вдруг еще видна) --тут тоже добавила 
         if (turnMessagePanel != null)
         {
             turnMessagePanel.SetActive(false);
         }
 
-        // Ищем в нашем списке нужную информацию по активному триггеру
         TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
 
         if (currentPoint == null)
         {
-            Debug.LogError("Не удалось найти настройки для текущей развилки! Проверьте инспектор.");
-            // Отменяем ожидание, чтобы не застрять
+            Debug.LogError("Не удалось найти настройки для текущей развилки!");
             waitingForTurnChoice = false;
             if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
             OnMovementFinished();
@@ -840,27 +843,21 @@ public class snake : MonoBehaviour
 
         if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
         waitingForTurnChoice = false;
-        currentDiceSteps = stepsRemainingAfterTurn;
 
-        // Используем данные из найденной развилки
         Transform[] targetLoopWaypoints = turnLeft ? currentPoint.leftWaypoints : currentPoint.rightWaypoints;
         int loopCost = turnLeft ? currentPoint.leftPathCost : currentPoint.rightPathCost;
 
         if (targetLoopWaypoints != null && targetLoopWaypoints.Length > 0)
         {
-            if (currentDiceSteps >= loopCost)
-            {
-                isMovingOnLoop = true;
-                if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
-                loopMoveCoroutine = StartCoroutine(MoveAlongLoopCoroutine(targetLoopWaypoints, loopCost));
-            }
-            else
-            {
-                currentDiceSteps = 0;
-                OnMovementFinished();
-            }
+            // Сохраняем начальное вращение перед входом на развилку
+            Quaternion initialRotation = transform.rotation;
+
+            isMovingOnLoop = true;
+            isForkActive = true;
+            if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
+            loopMoveCoroutine = StartCoroutine(MoveAlongLoopCoroutine(targetLoopWaypoints, loopCost, initialRotation));
         }
-        else // Если для этой развилки пути не заданы, делаем простой поворот
+        else
         {
             isMoving = true;
             float rotationYAmount = turnLeft ? -90f : 90f;
@@ -880,44 +877,231 @@ public class snake : MonoBehaviour
         UpdateUIAndButton();
     }
 
-    IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop)
+    IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop, Quaternion initialRotation)
     {
-        isMovingOnLoop = true; isMoving = true; UpdateUIAndButton();
-        if (waypoints.Length > 0) yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[0].position));
+        isMovingOnLoop = true;
+        isMoving = true;
+        UpdateUIAndButton();
 
+        // Сохраняем состояние развилки
+        currentForkWaypoints = waypoints;
+        currentForkCost = costOfLoop;
+        currentForkInitialRotation = initialRotation;
+        currentForkIndex = 0;
+        isForkActive = true;
+        shouldReturnToInitialRotation = true;
+        needsTurnToLastWaypoint = false;
+
+        // Обрабатываем все waypoints
         for (int i = 0; i < waypoints.Length; i++)
         {
-            Vector3 startPositionOfThisStep = transform.position;
-            Vector3 endPositionThisStep = waypoints[i].position;
-            float elapsedTime = 0;
+            // Если ходов не осталось - сохраняем состояние и прерываемся
+            if (currentDiceSteps <= 0)
+            {
+                // Запоминаем, что нужно сделать поворот к последнему waypoint
+                if (i == waypoints.Length - 2)
+                {
+                    needsTurnToLastWaypoint = true;
+                }
 
+                SavePlayerState();
+                isMovingOnLoop = false;
+                isMoving = false;
+                UpdateButtonRollDiceVisibility();
+                yield break;
+            }
+
+            // Вычитаем шаг
+            currentDiceSteps--;
+            UpdateMovesValueUIText(currentDiceSteps);
+
+            Transform targetWaypoint = waypoints[i];
+            Vector3 startPosition = transform.position;
+            Vector3 targetPosition = targetWaypoint.position;
+
+            // Для первого waypoint: поворачиваем к нему
+            if (i == 0)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(targetPosition));
+            }
+
+            // Двигаемся к waypoint
+            float elapsedTime = 0;
             while (elapsedTime < loopMoveDurationPerWaypoint)
             {
-                Vector3 posBeforeLerp = transform.position;
-                transform.position = Vector3.Lerp(startPositionOfThisStep, endPositionThisStep, elapsedTime / loopMoveDurationPerWaypoint);
-                if (i + 1 < waypoints.Length) RotateTowardsTargetDuringMovement(waypoints[i + 1].position);
-                else RotateTowardsTargetDuringMovement(endPositionThisStep + waypoints[i].forward);
+                transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / loopMoveDurationPerWaypoint);
                 elapsedTime += Time.deltaTime;
-
-                if (CheckAndHandleStopFieldIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем СТОП (середина петли)"); yield break; }
-                if (CheckAndShowPassportPanelIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем паспорта 14 лет (середина петли)"); yield break; }
-
                 yield return null;
             }
-            transform.position = endPositionThisStep;
+            transform.position = targetPosition;
+
+            // После достижения waypoint:
+            if (i == 0 && shouldReturnToInitialRotation)
+            {
+                // После первого waypoint возвращаем начальное вращение
+                transform.rotation = initialRotation;
+            }
+            else if (i == waypoints.Length - 1)
+            {
+                // После последнего waypoint возвращаем начальное вращение
+                transform.rotation = initialRotation;
+            }
+
+            // Если это предпоследний waypoint, поворачиваем к последнему
+            if (i == waypoints.Length - 2)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[i + 1].position));
+            }
 
             CheckForCinemaTile();
-            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true)) { ForceStopMovementSequence("Остановка на поле СТОП (конец точки пути петли)"); yield break; }
-            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true)) { ForceStopMovementSequence("Остановка на поле паспорта 14 лет (конец точки пути петли)"); yield break; }
+            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле СТОП");
+                yield break;
+            }
+            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле паспорта");
+                yield break;
+            }
+
+            currentForkIndex = i + 1;
         }
 
-        currentDiceSteps -= costOfLoop; UpdateMovesValueUIText(currentDiceSteps);
-        if (waypoints.Length > 0) transform.rotation = waypoints[waypoints.Length - 1].rotation;
+        // После прохождения всех waypoints
+        currentDiceSteps -= costOfLoop;
+        if (currentDiceSteps < 0) currentDiceSteps = 0;
+        UpdateMovesValueUIText(currentDiceSteps);
 
-        isMovingOnLoop = false; isMoving = false;
+        // Сбрасываем состояние развилки
+        ResetForkState();
 
-        if (currentDiceSteps > 0) { StartMoving(currentDiceSteps); }
-        else OnMovementFinished();
+        isMovingOnLoop = false;
+        isMoving = false;
+
+        if (currentDiceSteps > 0)
+        {
+            StartMoving(currentDiceSteps);
+        }
+        else
+        {
+            OnMovementFinished();
+        }
+    }
+
+    IEnumerator ContinueForkMovement()
+    {
+        isMovingOnLoop = true;
+        isMoving = true;
+        UpdateUIAndButton();
+
+        // Если нужно повернуть к последнему waypoint
+        if (needsTurnToLastWaypoint)
+        {
+            // Поворачиваем к последнему waypoint
+            if (currentForkIndex < currentForkWaypoints.Length)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(
+                    currentForkWaypoints[currentForkIndex].position));
+            }
+            needsTurnToLastWaypoint = false;
+        }
+
+        // Продолжаем с сохраненной позиции
+        for (int i = currentForkIndex; i < currentForkWaypoints.Length; i++)
+        {
+            // Если ходов не осталось - прерываемся
+            if (currentDiceSteps <= 0)
+            {
+                // Если мы на предпоследнем waypoint, запоминаем что нужно повернуть к последнему
+                if (i == currentForkWaypoints.Length - 2)
+                {
+                    needsTurnToLastWaypoint = true;
+                }
+
+                SavePlayerState();
+                isMovingOnLoop = false;
+                isMoving = false;
+                UpdateButtonRollDiceVisibility();
+                yield break;
+            }
+
+            // Вычитаем шаг
+            currentDiceSteps--;
+            UpdateMovesValueUIText(currentDiceSteps);
+
+            Transform targetWaypoint = currentForkWaypoints[i];
+            Vector3 startPosition = transform.position;
+            Vector3 targetPosition = targetWaypoint.position;
+
+            // Если это предпоследний waypoint, поворачиваем к последнему
+            if (i == currentForkWaypoints.Length - 2)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(
+                    currentForkWaypoints[i + 1].position));
+            }
+
+            // Двигаемся к waypoint
+            float elapsedTime = 0;
+            while (elapsedTime < loopMoveDurationPerWaypoint)
+            {
+                transform.position = Vector3.Lerp(startPosition, targetPosition, elapsedTime / loopMoveDurationPerWaypoint);
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+            transform.position = targetPosition;
+
+            // После достижения последнего waypoint возвращаем начальное вращение
+            if (i == currentForkWaypoints.Length - 1)
+            {
+                transform.rotation = currentForkInitialRotation;
+            }
+
+            CheckForCinemaTile();
+            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле СТОП");
+                yield break;
+            }
+            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле паспорта");
+                yield break;
+            }
+
+            currentForkIndex = i + 1;
+        }
+
+        // После прохождения всех waypoints
+        currentDiceSteps -= currentForkCost;
+        if (currentDiceSteps < 0) currentDiceSteps = 0;
+        UpdateMovesValueUIText(currentDiceSteps);
+
+        // Сбрасываем состояние развилки
+        ResetForkState();
+
+        isMovingOnLoop = false;
+        isMoving = false;
+
+        if (currentDiceSteps > 0)
+        {
+            StartMoving(currentDiceSteps);
+        }
+        else
+        {
+            OnMovementFinished();
+        }
+    }
+
+    private void ResetForkState()
+    {
+        currentForkWaypoints = null;
+        currentForkCost = 0;
+        currentForkInitialRotation = Quaternion.identity;
+        currentForkIndex = 0;
+        isForkActive = false;
+        shouldReturnToInitialRotation = false;
+        needsTurnToLastWaypoint = false;
     }
 
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
@@ -941,12 +1125,6 @@ public class snake : MonoBehaviour
         transform.rotation = targetRotation;
     }
 
-    void RotateTowardsTargetDuringMovement(Vector3 targetPosition)
-    {
-        Vector3 direction = (targetPosition - transform.position).normalized;
-        if (direction != Vector3.zero) transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), Time.deltaTime * loopRotateSpeed);
-    }
-
     void UpdateUIAndButton()
     {
         UpdateMovesValueUIText(currentDiceSteps);
@@ -963,7 +1141,6 @@ public class snake : MonoBehaviour
     {
         if (buttonRollDice != null)
         {
-
             bool canRoll = !(isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive) && currentDiceSteps <= 0;
             buttonRollDice.SetActive(canRoll);
         }
@@ -973,8 +1150,4 @@ public class snake : MonoBehaviour
     {
         return isMoving || waitingForTurnChoice || isMovingOnLoop || passportCheckEventActive || passportEventCurrentlyActive;
     }
-
-
-
-    
 }
