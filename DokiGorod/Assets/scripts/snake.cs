@@ -63,6 +63,30 @@ public class snake : MonoBehaviour
     public GameObject passportObject;
     public int passportFineAmount = 300;
 
+    [Header("Настройки событий 17 и 18 лет")]
+    public float graduationFieldXCoordinate = 210.0f;
+    public float graduationFieldTolerance = 0.5f;
+    public GameObject graduationUIPanel;
+    public GameObject getGraduationButton;
+
+    public float drivingLicenseFieldXCoordinate = 220.0f;
+    public float drivingLicenseFieldTolerance = 0.5f;
+    public GameObject drivingLicensePanel;
+    public GameObject getDrivingLicenseButton;
+
+    private bool hasGraduation = false;
+    private bool hasDrivingLicense = false;
+    private bool wentRightAtSecondFork = false;
+
+    [Header("Настройки Бонусной Клетки")]
+    public float bonusFieldXCoordinate = 60.0f; // Пример координаты X для бонусной клетки
+    public float bonusFieldTolerance = 1.5f;     // Допуск для проверки
+    public GameObject bonusUIPanel;              // Панель для сообщения о бонусе
+    public TMPro.TextMeshProUGUI bonusMessageText; // Текст сообщения
+    public int bonusAmount = 50;                 // Количество доков за бонус
+    private bool _bonusCheckedThisTurn = false;
+
+
     [Header("Настройки Кинотеатра")]
     public string cinemaTileTag = "CinemaTile"; // Тег для клетки "Кино"
     public int cinemaVisitCost = 50;      // Стоимость посещения кино
@@ -86,6 +110,7 @@ public class snake : MonoBehaviour
     private bool hasStoppedOnStopFieldThisMove = false;
     private bool startedMoveFromSpecialField = false;
     private bool hasAlreadyPresentedPassportOnThisStopField = false;
+    private bool _bonusAppliedThisTurn = false; // Добавьте в раздел с приватными переменными
 
 
     private const string PosXKey = "PlayerPositionX_Snake_DokiGorod";
@@ -103,6 +128,7 @@ public class snake : MonoBehaviour
     private static bool _isFirstLaunch = true;
 
     [SerializeField] private GameObject hasPassportPanel; // 🟢 ДОБАВЬ ЭТУ СТРОКУ
+    [SerializeField] private GameObject graduationCertificateObject;
 
     void Awake()
     {
@@ -256,6 +282,7 @@ public class snake : MonoBehaviour
     // ПОЛНОСТЬЮ ЗАМЕНИТЕ ВАШУ ФУНКЦИЮ STARTMOVING
     public void StartMoving(int steps, bool isContinuationOfEvent = false)
     {
+        _bonusAppliedThisTurn = false; // Сбрасываем при новом ходе
         // --- ПРЕДВАРИТЕЛЬНАЯ ПРОВЕРКА И ОЧИСТКА СОСТОЯНИЯ ---
 
         if (isMoving || waitingForTurnChoice || isMovingOnLoop)
@@ -321,6 +348,7 @@ public class snake : MonoBehaviour
                 {
                     if (CheckAndHandleStopFieldIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем Стоп (в середине хода)"); yield break; }
                     if (CheckAndShowPassportPanelIfNeeded(posBeforeLerp, transform.position)) { ForceStopMovementSequence("Прервано полем 14 лет (в середине хода)"); yield break; }
+                    if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { /* Обработка бонуса */ }
                 }
                 yield return null;
             }
@@ -336,6 +364,7 @@ public class snake : MonoBehaviour
 
             if (CheckAndHandleStopFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле Стоп (в конце шага)"); yield break; }
             if (CheckAndShowPassportPanelIfNeeded(startPositionOfThisStep, transform.position, true)) { ForceStopMovementSequence("Остановка на поле 14 лет (в конце шага)"); yield break; }
+            if (CheckAndHandleBonusFieldIfNeeded(startPositionOfThisStep, transform.position, true)) { /* Обработка бонуса */ }
         }
         ForceStopMovementSequence("Движение завершено нормально или по решению.");
     }
@@ -350,6 +379,14 @@ public class snake : MonoBehaviour
         if (hasStoppedOnStopFieldThisMove && !passportCheckEventActive)
         {
             hasStoppedOnStopFieldThisMove = false;
+        }
+
+        // Проверка бонусной клетки (добавлено)
+        if (!_bonusCheckedThisTurn && currentDiceSteps == 0 && 
+            Mathf.Abs(transform.position.x - bonusFieldXCoordinate) < bonusFieldTolerance)
+        {
+            GiveBonus();
+            _bonusCheckedThisTurn = true;
         }
 
         if (passportCheckEventActive || passportEventCurrentlyActive)
@@ -423,6 +460,57 @@ public class snake : MonoBehaviour
         startedMoveFromSpecialField = false;
 
         OnMovementFinished();
+    }
+
+    bool CheckAndHandleBonusFieldIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheck = false)
+    {
+        if (_bonusAppliedThisTurn) return false;
+
+        bool crossedXBonus = (prevPos.x < bonusFieldXCoordinate && currentPos.x >= bonusFieldXCoordinate) ||
+                            (prevPos.x > bonusFieldXCoordinate && currentPos.x <= bonusFieldXCoordinate);
+        bool atXBonusCoordinate = Mathf.Abs(currentPos.x - bonusFieldXCoordinate) < bonusFieldTolerance;
+
+        Debug.Log($"Bonus check: isFinalCheck={isFinalCheck}, atXBonus={atXBonusCoordinate}, stepsLeft={currentDiceSteps}");
+
+        if (isFinalCheck && atXBonusCoordinate && currentDiceSteps == 0)
+        {
+            Debug.Log("Условия для бонуса выполнены!");
+            GiveBonus();
+            _bonusAppliedThisTurn = true;
+            return true;
+        }
+        return false;
+    }
+
+    bool CheckBonusField(Vector3 position)
+    {
+        return Mathf.Abs(position.x - bonusFieldXCoordinate) < bonusFieldTolerance;
+    }
+
+    void GiveBonus()
+    {
+        money += bonusAmount;
+        UpdateMoneyUI();
+
+        if (bonusUIPanel != null)
+        {
+            bonusUIPanel.SetActive(true);
+            if (bonusMessageText != null)
+            {
+                bonusMessageText.text = $"Вы получили {bonusAmount} доков!";
+            }
+
+            StartCoroutine(HideBonusPanelAfterDelay(2f));
+        }
+    }
+
+    IEnumerator HideBonusPanelAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        if (bonusUIPanel != null)
+        {
+            bonusUIPanel.SetActive(false);
+        }
     }
 
     bool CheckAndShowPassportPanelIfNeeded(Vector3 prevPos, Vector3 currentPos, bool isFinalCheckAfterStop = false)
