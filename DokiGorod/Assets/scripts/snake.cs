@@ -288,45 +288,32 @@ public class snake : MonoBehaviour
 
     public void StartMoving(int steps, bool isContinuationOfEvent = false)
     {
-        // Проверяем, нужно ли продолжить движение по активной развилке
-        if (isForkActive && currentForkIndex < currentForkWaypoints.Length)
+        // Проверка активной развилки
+        if (isForkActive)
         {
-            _bonusAppliedThisTurn = false;
-            if (isMoving || waitingForTurnChoice || isMovingOnLoop)
-            {
-                Debug.Log("StartMoving блокирован активным процессом.");
-                return;
-            }
-
-            // Подготовка переменных для внутреннего блока
-            bool isStartingFromStopFieldInner = Mathf.Abs(transform.position.x - stopFieldXCoordinate) < stopFieldTolerance;
-            bool isStartingFromPassportFieldInner = Mathf.Abs(transform.position.x - passportFieldXCoordinate) < passportFieldTolerance;
-
+            // Сбрасываем флаги
             hasStoppedOnStopFieldThisMove = false;
             hasAlreadyPresentedPassportOnThisStopField = false;
             _cinemaCheckedThisTurn = false;
 
+            // Обработка UI событий
             if (passportEventCurrentlyActive) HidePassportUIPanel();
-            if (passportCheckEventActive)
-            {
-                HidePassportCheckPanel();
-                passportCheckEventActive = false;
-            }
-
-            startedMoveFromSpecialField = isStartingFromStopFieldInner || isStartingFromPassportFieldInner || isContinuationOfEvent;
+            if (passportCheckEventActive) HidePassportCheckPanel();
 
             currentDiceSteps = steps;
-            if (PlayerPrefs.HasKey(DiceRollKey)) PlayerPrefs.DeleteKey(DiceRollKey);
 
-            // Продолжаем движение по развилке
+            // Продолжаем движение по развилке с сохраненной позиции
             isMovingOnLoop = true;
             UpdateUIAndButton();
             if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
-            loopMoveCoroutine = StartCoroutine(ContinueForkMovement());
+            loopMoveCoroutine = StartCoroutine(ProcessForkMovement(
+                currentForkWaypoints,
+                currentForkCost,
+                currentForkInitialRotation));
             return;
         }
 
-        // Оригинальный код StartMoving
+        // Оригинальная логика для обычного движения
         _bonusAppliedThisTurn = false;
         if (isMoving || waitingForTurnChoice || isMovingOnLoop)
         {
@@ -488,7 +475,7 @@ public class snake : MonoBehaviour
             loopMoveCoroutine = null;
         }
 
-        // Сбрасываем состояние развилки только если остановка не вызвана нехваткой шагов на развилке
+        // Не сбрасываем состояние развилки при остановке на развилке
         if (!(isForkActive && currentDiceSteps <= 0))
         {
             ResetForkState();
@@ -825,43 +812,55 @@ public class snake : MonoBehaviour
     {
         if (!waitingForTurnChoice || currentTurnTrigger == null) return;
 
-        if (turnMessagePanel != null)
-        {
-            turnMessagePanel.SetActive(false);
-        }
+        // Закрываем UI выбора
+        if (turnMessagePanel != null) turnMessagePanel.SetActive(false);
+        if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
+        waitingForTurnChoice = false;
 
+        // Находим текущую точку развилки
         TurnPointInfo currentPoint = turnPoints.Find(p => p.triggerObject == currentTurnTrigger);
 
         if (currentPoint == null)
         {
             Debug.LogError("Не удалось найти настройки для текущей развилки!");
-            waitingForTurnChoice = false;
-            if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
             OnMovementFinished();
             return;
         }
 
-        if (turnChoiceUI != null) turnChoiceUI.SetActive(false);
-        waitingForTurnChoice = false;
-
+        // Определяем выбранный путь
         Transform[] targetLoopWaypoints = turnLeft ? currentPoint.leftWaypoints : currentPoint.rightWaypoints;
         int loopCost = turnLeft ? currentPoint.leftPathCost : currentPoint.rightPathCost;
 
         if (targetLoopWaypoints != null && targetLoopWaypoints.Length > 0)
         {
-            // Сохраняем начальное вращение перед входом на развилку
-            Quaternion initialRotation = transform.rotation;
-
-            isMovingOnLoop = true;
+            // Сохраняем состояние развилки
             isForkActive = true;
-            if (loopMoveCoroutine != null) StopCoroutine(loopMoveCoroutine);
-            loopMoveCoroutine = StartCoroutine(MoveAlongLoopCoroutine(targetLoopWaypoints, loopCost, initialRotation));
+            currentForkWaypoints = targetLoopWaypoints;
+            currentForkCost = loopCost;
+            currentForkInitialRotation = transform.rotation;
+            currentForkIndex = 0;
+
+            // Запускаем процесс прохождения развилки
+            isMovingOnLoop = true;
+            UpdateUIAndButton();
+
+            if (loopMoveCoroutine != null)
+                StopCoroutine(loopMoveCoroutine);
+
+            loopMoveCoroutine = StartCoroutine(ProcessForkMovement(
+                targetLoopWaypoints,
+                loopCost,
+                transform.rotation));
         }
         else
         {
+            // Обработка простого поворота без waypoints
             isMoving = true;
             float rotationYAmount = turnLeft ? -90f : 90f;
-            if (primaryMoveCoroutine != null) StopCoroutine(primaryMoveCoroutine);
+
+            if (primaryMoveCoroutine != null)
+                StopCoroutine(primaryMoveCoroutine);
+
             primaryMoveCoroutine = StartCoroutine(RotateCoroutine(rotationYAmount, () =>
             {
                 if (currentDiceSteps > 0)
@@ -874,7 +873,98 @@ public class snake : MonoBehaviour
                 }
             }));
         }
+
         UpdateUIAndButton();
+    }
+
+    IEnumerator ProcessForkMovement(Transform[] waypoints, int costOfLoop, Quaternion initialRotation)
+    {
+        isMovingOnLoop = true;
+        isMoving = true;
+        UpdateUIAndButton();
+
+        // Проходим все точки развилки
+        for (int i = currentForkIndex; i < waypoints.Length; i++)
+        {
+            // Сохраняем текущую позицию в развилке
+            currentForkIndex = i;
+
+            // 1. Двигаемся к текущей точке
+            if (currentDiceSteps <= 0)
+            {
+                // Сохраняем состояние и прерываемся
+                SavePlayerState();
+                isMovingOnLoop = false;
+                isMoving = false;
+                UpdateButtonRollDiceVisibility();
+                yield break;
+            }
+
+            // Вычитаем шаг и обновляем UI
+            currentDiceSteps--;
+            UpdateMovesValueUIText(currentDiceSteps);
+
+            // Двигаемся к текущей точке
+            Vector3 startPos = transform.position;
+            Vector3 targetPos = waypoints[i].position;
+            float elapsedTime = 0;
+
+            while (elapsedTime < loopMoveDurationPerWaypoint)
+            {
+                transform.position = Vector3.Lerp(startPos, targetPos, elapsedTime / loopMoveDurationPerWaypoint);
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+            transform.position = targetPos;
+
+            // 2. После прибытия на точку выполняем повороты
+            // Для предпоследней точки: поворачиваем к последней
+            if (i == waypoints.Length - 2)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[i + 1].position));
+            }
+            // Для последней точки: возвращаем исходное вращение
+            else if (i == waypoints.Length - 1)
+            {
+                transform.rotation = initialRotation;
+            }
+
+            // 3. Проверяем специальные поля
+            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле СТОП");
+                yield break;
+            }
+            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
+            {
+                ForceStopMovementSequence("Остановка на поле паспорта");
+                yield break;
+            }
+
+            // Проверяем кинотеатр
+            CheckForCinemaTile();
+        }
+
+        // После прохождения всех точек вычитаем стоимость развилки
+        currentDiceSteps -= costOfLoop;
+        if (currentDiceSteps < 0) currentDiceSteps = 0;
+        UpdateMovesValueUIText(currentDiceSteps);
+
+        // Сбрасываем состояние развилки
+        ResetForkState();
+
+        isMovingOnLoop = false;
+        isMoving = false;
+
+        // Продолжаем движение, если остались шаги
+        if (currentDiceSteps > 0)
+        {
+            StartMoving(currentDiceSteps);
+        }
+        else
+        {
+            OnMovementFinished();
+        }
     }
 
     IEnumerator MoveAlongLoopCoroutine(Transform[] waypoints, int costOfLoop, Quaternion initialRotation)
@@ -889,21 +979,30 @@ public class snake : MonoBehaviour
         currentForkInitialRotation = initialRotation;
         currentForkIndex = 0;
         isForkActive = true;
-        shouldReturnToInitialRotation = true;
-        needsTurnToLastWaypoint = false;
 
-        // Обрабатываем все waypoints
+        // Проходим все waypoints по порядку
         for (int i = 0; i < waypoints.Length; i++)
         {
-            // Если ходов не осталось - сохраняем состояние и прерываемся
+            // Запоминаем текущую позицию в развилке
+            currentForkIndex = i;
+
+            // Для первого waypoint: поворачиваем к нему
+            if (i == 0)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[0].position));
+            }
+
+            // Если это предпоследний waypoint
+            if (i == waypoints.Length - 2)
+            {
+                // Поворачиваем к последнему waypoint
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[i + 1].position));
+            }
+
+            // Проверяем, остались ли шаги для движения
             if (currentDiceSteps <= 0)
             {
-                // Запоминаем, что нужно сделать поворот к последнему waypoint
-                if (i == waypoints.Length - 2)
-                {
-                    needsTurnToLastWaypoint = true;
-                }
-
+                // Сохраняем позицию и прерываем движение
                 SavePlayerState();
                 isMovingOnLoop = false;
                 isMoving = false;
@@ -911,21 +1010,15 @@ public class snake : MonoBehaviour
                 yield break;
             }
 
-            // Вычитаем шаг
+            // Вычитаем шаг за движение
             currentDiceSteps--;
             UpdateMovesValueUIText(currentDiceSteps);
 
+            // Двигаемся к текущему waypoint
             Transform targetWaypoint = waypoints[i];
             Vector3 startPosition = transform.position;
             Vector3 targetPosition = targetWaypoint.position;
 
-            // Для первого waypoint: поворачиваем к нему
-            if (i == 0)
-            {
-                yield return StartCoroutine(RotateTowardsTargetCoroutine(targetPosition));
-            }
-
-            // Двигаемся к waypoint
             float elapsedTime = 0;
             while (elapsedTime < loopMoveDurationPerWaypoint)
             {
@@ -935,37 +1028,11 @@ public class snake : MonoBehaviour
             }
             transform.position = targetPosition;
 
-            // После достижения waypoint:
-            if (i == 0 && shouldReturnToInitialRotation)
+            // Если это последний waypoint - возвращаем начальное вращение
+            if (i == waypoints.Length - 1)
             {
-                // После первого waypoint возвращаем начальное вращение
                 transform.rotation = initialRotation;
             }
-            else if (i == waypoints.Length - 1)
-            {
-                // После последнего waypoint возвращаем начальное вращение
-                transform.rotation = initialRotation;
-            }
-
-            // Если это предпоследний waypoint, поворачиваем к последнему
-            if (i == waypoints.Length - 2)
-            {
-                yield return StartCoroutine(RotateTowardsTargetCoroutine(waypoints[i + 1].position));
-            }
-
-            CheckForCinemaTile();
-            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
-            {
-                ForceStopMovementSequence("Остановка на поле СТОП");
-                yield break;
-            }
-            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
-            {
-                ForceStopMovementSequence("Остановка на поле паспорта");
-                yield break;
-            }
-
-            currentForkIndex = i + 1;
         }
 
         // После прохождения всех waypoints
@@ -995,30 +1062,30 @@ public class snake : MonoBehaviour
         isMoving = true;
         UpdateUIAndButton();
 
-        // Если нужно повернуть к последнему waypoint
-        if (needsTurnToLastWaypoint)
-        {
-            // Поворачиваем к последнему waypoint
-            if (currentForkIndex < currentForkWaypoints.Length)
-            {
-                yield return StartCoroutine(RotateTowardsTargetCoroutine(
-                    currentForkWaypoints[currentForkIndex].position));
-            }
-            needsTurnToLastWaypoint = false;
-        }
-
         // Продолжаем с сохраненной позиции
         for (int i = currentForkIndex; i < currentForkWaypoints.Length; i++)
         {
-            // Если ходов не осталось - прерываемся
+            // Обновляем текущую позицию
+            currentForkIndex = i;
+
+            // Для первого waypoint: поворачиваем к нему
+            if (i == 0)
+            {
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(currentForkWaypoints[0].position));
+            }
+
+            // Если это предпоследний waypoint
+            if (i == currentForkWaypoints.Length - 2)
+            {
+                // Поворачиваем к последнему waypoint
+                yield return StartCoroutine(RotateTowardsTargetCoroutine(
+                    currentForkWaypoints[i + 1].position));
+            }
+
+            // Проверяем, остались ли шаги для движения
             if (currentDiceSteps <= 0)
             {
-                // Если мы на предпоследнем waypoint, запоминаем что нужно повернуть к последнему
-                if (i == currentForkWaypoints.Length - 2)
-                {
-                    needsTurnToLastWaypoint = true;
-                }
-
+                // Сохраняем позицию и прерываем движение
                 SavePlayerState();
                 isMovingOnLoop = false;
                 isMoving = false;
@@ -1026,22 +1093,15 @@ public class snake : MonoBehaviour
                 yield break;
             }
 
-            // Вычитаем шаг
+            // Вычитаем шаг за движение
             currentDiceSteps--;
             UpdateMovesValueUIText(currentDiceSteps);
 
+            // Двигаемся к текущему waypoint
             Transform targetWaypoint = currentForkWaypoints[i];
             Vector3 startPosition = transform.position;
             Vector3 targetPosition = targetWaypoint.position;
 
-            // Если это предпоследний waypoint, поворачиваем к последнему
-            if (i == currentForkWaypoints.Length - 2)
-            {
-                yield return StartCoroutine(RotateTowardsTargetCoroutine(
-                    currentForkWaypoints[i + 1].position));
-            }
-
-            // Двигаемся к waypoint
             float elapsedTime = 0;
             while (elapsedTime < loopMoveDurationPerWaypoint)
             {
@@ -1051,25 +1111,11 @@ public class snake : MonoBehaviour
             }
             transform.position = targetPosition;
 
-            // После достижения последнего waypoint возвращаем начальное вращение
+            // Если это последний waypoint - возвращаем начальное вращение
             if (i == currentForkWaypoints.Length - 1)
             {
                 transform.rotation = currentForkInitialRotation;
             }
-
-            CheckForCinemaTile();
-            if (CheckAndHandleStopFieldIfNeeded(transform.position, transform.position, true))
-            {
-                ForceStopMovementSequence("Остановка на поле СТОП");
-                yield break;
-            }
-            if (CheckAndShowPassportPanelIfNeeded(transform.position, transform.position, true))
-            {
-                ForceStopMovementSequence("Остановка на поле паспорта");
-                yield break;
-            }
-
-            currentForkIndex = i + 1;
         }
 
         // После прохождения всех waypoints
@@ -1100,8 +1146,6 @@ public class snake : MonoBehaviour
         currentForkInitialRotation = Quaternion.identity;
         currentForkIndex = 0;
         isForkActive = false;
-        shouldReturnToInitialRotation = false;
-        needsTurnToLastWaypoint = false;
     }
 
     IEnumerator RotateCoroutine(float angleY, System.Action onRotationComplete)
